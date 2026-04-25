@@ -1,0 +1,53 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: #0a0e14;
+  color: #c4cdd9;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+body {
+  background-image:
+    linear-gradient(#141a24 1px, transparent 1px),
+    linear-gradient(90deg, #141a24 1px, transparent 1px);
+  background-size: 48px 48px;
+  background-position: -1px -1px;
+}
+
+@layer components {
+  .panel {
+    @apply border border-mc-cyan/30 bg-panel-fill backdrop-blur-sm;
+  }
+  .panel-title {
+    @apply font-mono text-[11px] uppercase tracking-[0.18em] text-mc-cyan/80;
+  }
+  .mono {
+    @apply font-mono;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 border border-mc-cyan/40 bg-mc-cyan/5 px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-mc-cyan transition-colors hover:bg-mc-cyan/15 disabled:cursor-not-allowed disabled:border-mc-dim/40 disabled:bg-transparent disabled:text-mc-dim;
+  }
+  .btn-warn {
+    @apply border-mc-amber/60 text-mc-amber hover:bg-mc-amber/15;
+  }
+  .btn-danger {
+    @apply border-mc-red/60 text-mc-red hover:bg-mc-red/15;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest;
+  }
+}
