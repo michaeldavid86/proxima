@@ -4,6 +4,7 @@ import Brief from './Brief'
 import GameScreen from './GameScreen'
 import Debrief from './Debrief'
 import HistoricalPlayer from './HistoricalPlayer'
+import TrajectorySandbox from './TrajectorySandbox'
 
 export default function App() {
   const screen = useGame((s) => s.screen)
@@ -14,6 +15,7 @@ export default function App() {
       {screen === 'game' && <GameScreen />}
       {screen === 'debrief' && <Debrief />}
       {screen === 'historical' && <HistoricalPlayer />}
+      {screen === 'sandbox' && <TrajectorySandbox />}
     </div>
   )
 }

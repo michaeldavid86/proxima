@@ -81,6 +81,9 @@ const buildInitialState = (vignetteId: string): GameStore => {
     toggleInstructorView: () => {},
     setActiveAsset: () => {},
     setCoachRequest: () => {},
+    setViewMode3D: () => {},
+    setScalePreset: () => {},
+    setPlannedManeuverPreview: () => {},
   }
   return base
 }

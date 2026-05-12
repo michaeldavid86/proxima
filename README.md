@@ -1,4 +1,4 @@
-# PROXIMA — RPO Trainer (v1.2 Spiral Edition)
+# PROXIMA — RPO Trainer (v1.3 Astro Edition)
 
 Browser-based orbital rendezvous and proximity operations trainer.
 
@@ -20,6 +20,22 @@ Browser-based orbital rendezvous and proximity operations trainer.
   spacecraft life so cadets feel the real cost of every burn.
 - **Recommended Actions** highlight on the tactical panel nudges players
   toward mission-appropriate choices without disabling anything.
+- **3D visualization** (v1.3): every mission renders in either 2D (default,
+  top-down map) or 3D (interactive Three.js scene with proper inclined
+  orbital planes, scale presets for regime / close / proximity, and target-
+  centered RIC axes when zoomed in). Toggle with the chip in the top-right
+  of the canvas.
+- **Maneuver preview** (v1.3): when you adjust a planned burn, the projected
+  post-burn orbit renders dashed amber alongside the current orbit in both
+  2D and 3D, the burn point gets a chevron with a red thrust-direction
+  arrow, and a cost popup shows delta-V, time-to-achieve, operational-life
+  cost, and the resulting periapsis / apoapsis / period. Updates live as
+  you adjust the slider.
+- **RPO Trajectory Sandbox** (v1.3): a top-level mode that lets cadets
+  explore the three foundational relative-motion trajectories from Core
+  Astro — perch, linear drift, and natural-motion circumnavigation — in the
+  RIC frame. CW-computed delta-V to enter and exit each trajectory updates
+  live as the parameter slider moves.
 - **AI Coach** (v1.2, disabled by default): a Vercel Serverless Function
   at `/api/coach` runs a Claude Haiku 4.5 debrief against the mission log
   and returns a doctrinally-grounded after-action review. The infrastructure

@@ -3,6 +3,7 @@
 // Z (cross-track) is not drawn; it's a 2D projection onto the V-R plane.
 import { useEffect, useRef, useState } from 'react'
 import { useGame } from '../game/state'
+import { computeManeuverPreview } from '../game/maneuver-preview'
 import { colors } from '../theme/colors'
 import { MU_EARTH } from '../physics/constants'
 import { meanMotionFromA, stateToCoe } from '../physics/orbital-elements'
@@ -77,6 +78,27 @@ export default function ProxView() {
   const [dir, setDir] = useState<RicDir>('V-')
   const [dvMag, setDvMag] = useState(0.5)
   const [burnOffsetSec, setBurnOffsetSec] = useState(10)
+  const setPlannedManeuverPreview = useGame((s) => s.setPlannedManeuverPreview)
+
+  // v1.3 — live maneuver preview from the RIC impulse panel.
+  useEffect(() => {
+    if (!mission || readOnly) {
+      setPlannedManeuverPreview(null)
+      return
+    }
+    if (dvMag <= 0) {
+      setPlannedManeuverPreview(null)
+      return
+    }
+    const dv = dvFromRicDir(dir, dvMag)
+    const state = useGame.getState()
+    const preview = computeManeuverPreview(state, controllerId, dv, burnOffsetSec)
+    setPlannedManeuverPreview(preview)
+  }, [mission, readOnly, dir, dvMag, burnOffsetSec, controllerId, setPlannedManeuverPreview])
+
+  useEffect(() => {
+    return () => setPlannedManeuverPreview(null)
+  }, [setPlannedManeuverPreview])
 
   // Reset history on mission change.
   useEffect(() => {

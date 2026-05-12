@@ -15,7 +15,10 @@ import { budgetFromMass, lifeYearsFromDv } from './operational-life'
 export type LinkStatus = 'nominal' | 'degraded' | 'denied'
 export type MissionStatus = 'active' | 'success' | 'failure'
 export type ViewMode = 'map' | 'prox'
-export type Screen = 'menu' | 'brief' | 'game' | 'debrief' | 'historical'
+// v1.3: 2D vs 3D rendering. Default '2d' preserves v1.2 behavior exactly.
+export type ViewMode3D = '2d' | '3d'
+export type ScalePreset = 'regime' | 'close' | 'proximity' | 'free'
+export type Screen = 'menu' | 'brief' | 'game' | 'debrief' | 'historical' | 'sandbox'
 // v1.1: widened to include Watch-mode speeds (0.5, 2, 4) alongside Play-mode warps.
 export type TimeWarp = 0.5 | 1 | 2 | 4 | 10 | 100 | 1000
 export type GameMode = 'play' | 'watch'
@@ -45,6 +48,24 @@ export interface PlannedManeuver {
   shipId: string
   burnTimeSec: number // absolute sim time
   dvRic: Vec3
+}
+
+// v1.3 maneuver preview. Computed live from the maneuver panel inputs (before
+// commit). Purely a visualization aid — sim never reads this. Once the player
+// hits "Commit," the preview becomes a PlannedManeuver and the preview clears.
+import type { COE } from '../physics/orbital-elements'
+export interface PlannedManeuverPreview {
+  craftId: string
+  dvRic: Vec3
+  burnOffsetSec: number
+  // Derived (recomputed on each change):
+  currentElements: COE
+  projectedElements: COE
+  burnPointEci: Vec3
+  thrustVectorEci: Vec3
+  dvMag: number
+  timeToAchieveSec: number
+  costYears: number
 }
 
 // Planned tactical action: a named effect selected for this turn.
@@ -129,6 +150,10 @@ export interface GameState {
     response: string | null
     error: string | null
   }
+  // v1.3 3D layer
+  viewMode3D: ViewMode3D
+  scalePreset: ScalePreset
+  plannedManeuverPreview: PlannedManeuverPreview | null
   // v1.1 Watch mode
   mode: GameMode
   vignette: VignetteScript | null
@@ -239,6 +264,9 @@ export const initialGameState = (): GameState => ({
     response: null,
     error: null,
   },
+  viewMode3D: '2d',
+  scalePreset: 'regime',
+  plannedManeuverPreview: null,
 })
 
 // Seed operational-life state from a mission's player loadout.
@@ -282,6 +310,9 @@ export interface GameStore extends GameState {
   toggleInstructorView: () => void
   setActiveAsset: (id: string) => void
   setCoachRequest: (r: Partial<GameState['coachRequest']>) => void
+  setViewMode3D: (m: ViewMode3D) => void
+  setScalePreset: (p: ScalePreset) => void
+  setPlannedManeuverPreview: (p: PlannedManeuverPreview | null) => void
 }
 
 const buildMissionInit = (
@@ -381,6 +412,9 @@ export const useGame = create<GameStore>()((set) => ({
   setActiveAsset: (id) => set({ activeAssetId: id }),
   setCoachRequest: (r) =>
     set((s) => ({ coachRequest: { ...s.coachRequest, ...r } })),
+  setViewMode3D: (m) => set({ viewMode3D: m }),
+  setScalePreset: (p) => set({ scalePreset: p }),
+  setPlannedManeuverPreview: (p) => set({ plannedManeuverPreview: p }),
 }))
 
 // A small helper to recover a ship's COE from its current state vector.

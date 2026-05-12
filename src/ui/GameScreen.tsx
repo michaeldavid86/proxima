@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useGame } from '../game/state'
 import { useSimLoop } from './useSimLoop'
+import { Suspense, lazy } from 'react'
 import MapView from './MapView'
 import ProxView from './ProxView'
 import Telemetry from './Telemetry'
@@ -11,7 +12,13 @@ import NarrationPanel from './NarrationPanel'
 import TeachingModal from './TeachingModal'
 import LogStrip from './LogStrip'
 import AssetSelector from './AssetSelector'
+import ViewModeToggle from './ViewModeToggle'
+import ScalePresetSelector from './ScalePresetSelector'
+import ManeuverCostPopup from './ManeuverCostPopup'
 import Button from './components/Button'
+
+// 3D scene is lazy-loaded so the three.js bundle is only fetched when needed.
+const Scene3D = lazy(() => import('../3d/Scene3D'))
 import { fmtClock } from '../game/events'
 import { norm, sub } from '../physics/vec'
 
@@ -26,7 +33,9 @@ export default function GameScreen() {
   const setScreen = useGame((s) => s.setScreen)
   const spacecraft = useGame((s) => s.spacecraft)
   const mode = useGame((s) => s.mode)
+  const viewMode3D = useGame((s) => s.viewMode3D)
   const isWatch = mode === 'watch'
+  const is3D = viewMode3D === '3d'
 
   // Auto-switch to ProxView when range < 50 km (Play mode only; in Watch the
   // script controls view changes via view_change waypoints).
@@ -74,7 +83,28 @@ export default function GameScreen() {
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="relative flex-1">
-            {viewMode === 'map' ? <MapView /> : <ProxView />}
+            <div className="pointer-events-none absolute right-3 top-3 z-20 flex flex-col items-end gap-2">
+              <ViewModeToggle />
+              {is3D && <ScalePresetSelector />}
+            </div>
+            <div className="pointer-events-none absolute left-3 bottom-3 z-20 max-w-[300px]">
+              <ManeuverCostPopup />
+            </div>
+            {is3D ? (
+              <Suspense
+                fallback={
+                  <div className="flex h-full w-full items-center justify-center font-mono text-xs text-mc-dim">
+                    Loading 3D scene...
+                  </div>
+                }
+              >
+                <Scene3D />
+              </Suspense>
+            ) : viewMode === 'map' ? (
+              <MapView />
+            ) : (
+              <ProxView />
+            )}
             {showHint && (
               <div className="pointer-events-auto absolute left-1/2 top-4 z-10 max-w-xl -translate-x-1/2 border border-mc-amber/60 bg-panel-fill px-4 py-2 shadow-glow">
                 <div className="flex items-start gap-3">

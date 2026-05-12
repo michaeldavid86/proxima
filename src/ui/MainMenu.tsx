@@ -101,6 +101,35 @@ export default function MainMenu() {
         <div className="mb-3 flex items-baseline justify-between">
           <h2 className="panel-title">
             <span className="chip mr-2 border-mc-green/60 text-mc-green">NEW</span>
+            RPO Trajectory Sandbox
+          </h2>
+          <span className="font-mono text-[10px] text-mc-dim">
+            Explore the three foundational RPO relative motion trajectories from Core Astro.
+          </span>
+        </div>
+        <button
+          onClick={() => setScreen('sandbox')}
+          className="group flex w-full items-start gap-4 border border-mc-amber/30 bg-panel-fill p-4 text-left transition-colors hover:border-mc-amber hover:bg-mc-amber/5"
+        >
+          <span className="text-3xl">🛰️</span>
+          <div className="flex flex-1 flex-col gap-1">
+            <div className="font-mono text-sm text-mc-amber">Trajectory Sandbox</div>
+            <div className="text-xs leading-relaxed text-mc-text">
+              Perch, linear drift, natural-motion circumnavigation. Adjust the parameter, watch the
+              chaser trajectory in the RIC frame, and see the CW-computed delta-V to enter and exit.
+            </div>
+            <div className="mt-1 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-mc-dim">
+              <span>RIC frame · interactive · no scoring</span>
+            </div>
+          </div>
+          <span className="font-mono text-[10px] text-mc-amber">Open →</span>
+        </button>
+      </section>
+
+      <section className="w-full max-w-6xl">
+        <div className="mb-3 flex items-baseline justify-between">
+          <h2 className="panel-title">
+            <span className="chip mr-2 border-mc-green/60 text-mc-green">NEW</span>
             Historical Ops
           </h2>
           <span className="font-mono text-[10px] text-mc-dim">

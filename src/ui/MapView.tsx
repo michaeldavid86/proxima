@@ -15,6 +15,7 @@ import { propagateState } from '../physics/kepler'
 import { norm, sub, type Vec3 } from '../physics/vec'
 import { applyImpulseEci, burnFromRic } from '../physics/maneuver'
 import { useGame, type SpacecraftState } from '../game/state'
+import { computeManeuverPreview } from '../game/maneuver-preview'
 import { colors, assetColor } from '../theme/colors'
 
 interface ViewState {
@@ -119,6 +120,7 @@ export default function MapView() {
   const simTime = useGame((s) => s.simTimeSec)
   const plannedManeuver = useGame((s) => s.plannedManeuver)
   const setPlannedManeuver = useGame((s) => s.setPlannedManeuver)
+  const plannedManeuverPreview = useGame((s) => s.plannedManeuverPreview)
   const mode = useGame((s) => s.mode)
   const activeAssetId = useGame((s) => s.activeAssetId)
   const readOnly = mode === 'watch'
@@ -135,6 +137,30 @@ export default function MapView() {
   const [burnOffsetSec, setBurnOffsetSec] = useState<number>(30)
   const [clickedNu, setClickedNu] = useState<number | null>(null)
   const commitLog = useGame((s) => s.pushLog)
+  const setPlannedManeuverPreview = useGame((s) => s.setPlannedManeuverPreview)
+
+  // v1.3 — live maneuver preview. Recompute whenever direction, magnitude, or
+  // burn timing changes. The preview is a pure visualization; nothing in the
+  // sim reads it. Cleared on Watch-mode entry and when the panel is hidden.
+  useEffect(() => {
+    if (!mission || readOnly) {
+      setPlannedManeuverPreview(null)
+      return
+    }
+    if (dvMag <= 0) {
+      setPlannedManeuverPreview(null)
+      return
+    }
+    const dv = dirRic(dir).map((x) => x * dvMag) as Vec3
+    const state = useGame.getState()
+    const preview = computeManeuverPreview(state, controllerId, dv, burnOffsetSec)
+    setPlannedManeuverPreview(preview)
+  }, [mission, readOnly, dir, dvMag, burnOffsetSec, controllerId, setPlannedManeuverPreview])
+
+  // Clear preview when the component unmounts.
+  useEffect(() => {
+    return () => setPlannedManeuverPreview(null)
+  }, [setPlannedManeuverPreview])
 
   // Frame the view for this mission once it loads.
   useEffect(() => {
@@ -230,41 +256,101 @@ export default function MapView() {
       ctx.globalAlpha = 1
     }
 
-    // If there's a planned maneuver, draw the predicted post-burn orbit dashed.
-    if (mission && plannedManeuver) {
-      const ship = spacecraft[plannedManeuver.shipId]
-      if (ship) {
-        // Propagate to burn time to get state at burn, then apply impulse.
-        const dtToBurn = Math.max(0, plannedManeuver.burnTimeSec - simTime)
-        const svAtBurn = propagateState({ r: ship.rEci, v: ship.vEci }, dtToBurn)
-        const burn = burnFromRic(svAtBurn.r, svAtBurn.v, plannedManeuver.dvRic)
-        const vAfter = applyImpulseEci(svAtBurn.v, burn)
-        const coeAfter = stateToCoe({ r: svAtBurn.r, v: vAfter })
-        if (Number.isFinite(coeAfter.a) && coeAfter.e < 1) {
-          const pts = sampleOrbitXY(coeAfter)
-          ctx.save()
-          ctx.setLineDash([6, 4])
-          ctx.strokeStyle = colors.amber
-          ctx.lineWidth = 1.3
-          ctx.beginPath()
-          for (let i = 0; i < pts.length; i++) {
-            const p = worldToScreen(pts[i][0], pts[i][1], vs, W, H)
-            if (i === 0) ctx.moveTo(p.x, p.y)
-            else ctx.lineTo(p.x, p.y)
-          }
-          ctx.stroke()
-          ctx.restore()
+    // If there's a planned maneuver OR a live preview, draw the predicted
+    // post-burn orbit dashed in amber, plus a burn-point marker and a small
+    // thrust-direction arrow. Preview takes priority over committed when both
+    // exist (the player is mid-edit).
+    const previewSource: {
+      burnPointEci: [number, number, number]
+      projectedElements: COE
+      thrustVectorEci: [number, number, number]
+      dvMag: number
+    } | null = (() => {
+      if (plannedManeuverPreview && plannedManeuverPreview.dvMag > 0)
+        return {
+          burnPointEci: plannedManeuverPreview.burnPointEci,
+          projectedElements: plannedManeuverPreview.projectedElements,
+          thrustVectorEci: plannedManeuverPreview.thrustVectorEci,
+          dvMag: plannedManeuverPreview.dvMag,
         }
-        // Draw the burn-node marker on the current orbit at the burn point.
-        const node = worldToScreen(svAtBurn.r[0], svAtBurn.r[1], vs, W, H)
-        ctx.fillStyle = colors.amber
-        ctx.beginPath()
-        ctx.arc(node.x, node.y, 5, 0, 2 * Math.PI)
-        ctx.fill()
-        ctx.strokeStyle = colors.amber
-        ctx.lineWidth = 1
-        ctx.strokeRect(node.x - 8, node.y - 8, 16, 16)
+      if (mission && plannedManeuver) {
+        const ship = spacecraft[plannedManeuver.shipId]
+        if (ship) {
+          const dtToBurn = Math.max(0, plannedManeuver.burnTimeSec - simTime)
+          const svAtBurn = propagateState({ r: ship.rEci, v: ship.vEci }, dtToBurn)
+          const burn = burnFromRic(svAtBurn.r, svAtBurn.v, plannedManeuver.dvRic)
+          const vAfter = applyImpulseEci(svAtBurn.v, burn)
+          const coeAfter = stateToCoe({ r: svAtBurn.r, v: vAfter })
+          const dvMag = Math.hypot(...plannedManeuver.dvRic)
+          return {
+            burnPointEci: svAtBurn.r,
+            projectedElements: coeAfter,
+            thrustVectorEci: [
+              burn.dvEci[0] / (dvMag || 1),
+              burn.dvEci[1] / (dvMag || 1),
+              burn.dvEci[2] / (dvMag || 1),
+            ],
+            dvMag,
+          }
+        }
       }
+      return null
+    })()
+
+    if (previewSource) {
+      const coeAfter = previewSource.projectedElements
+      if (Number.isFinite(coeAfter.a) && coeAfter.e < 1) {
+        const pts = sampleOrbitXY(coeAfter)
+        ctx.save()
+        ctx.setLineDash([6, 4])
+        ctx.strokeStyle = colors.amber
+        ctx.lineWidth = 1.4
+        ctx.beginPath()
+        for (let i = 0; i < pts.length; i++) {
+          const p = worldToScreen(pts[i][0], pts[i][1], vs, W, H)
+          if (i === 0) ctx.moveTo(p.x, p.y)
+          else ctx.lineTo(p.x, p.y)
+        }
+        ctx.stroke()
+        ctx.restore()
+      }
+      // Burn-point chevron marker
+      const node = worldToScreen(
+        previewSource.burnPointEci[0],
+        previewSource.burnPointEci[1],
+        vs,
+        W,
+        H,
+      )
+      ctx.fillStyle = colors.amber
+      ctx.beginPath()
+      ctx.arc(node.x, node.y, 5, 0, 2 * Math.PI)
+      ctx.fill()
+      ctx.strokeStyle = colors.amber
+      ctx.lineWidth = 1
+      ctx.strokeRect(node.x - 8, node.y - 8, 16, 16)
+
+      // Thrust direction arrow in screen space (red, length ~22 px).
+      const tvX = previewSource.thrustVectorEci[0]
+      const tvY = previewSource.thrustVectorEci[1]
+      const tvMag = Math.hypot(tvX, tvY) || 1
+      const headX = node.x + (tvX / tvMag) * 22
+      const headY = node.y - (tvY / tvMag) * 22
+      ctx.strokeStyle = colors.red
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(node.x, node.y)
+      ctx.lineTo(headX, headY)
+      ctx.stroke()
+      // Arrowhead
+      const ang = Math.atan2(headY - node.y, headX - node.x)
+      ctx.beginPath()
+      ctx.moveTo(headX, headY)
+      ctx.lineTo(headX - 6 * Math.cos(ang - Math.PI / 6), headY - 6 * Math.sin(ang - Math.PI / 6))
+      ctx.lineTo(headX - 6 * Math.cos(ang + Math.PI / 6), headY - 6 * Math.sin(ang + Math.PI / 6))
+      ctx.closePath()
+      ctx.fillStyle = colors.red
+      ctx.fill()
     }
 
     // Closest-approach markers: compute using sampled orbital positions of player vs target.
@@ -390,7 +476,7 @@ export default function MapView() {
     ctx.moveTo(16, H - 10)
     ctx.lineTo(16 + barPx, H - 10)
     ctx.stroke()
-  }, [mission, spacecraft, simTime, plannedManeuver, clickedNu])
+  }, [mission, spacecraft, simTime, plannedManeuver, plannedManeuverPreview, clickedNu])
 
   // Mouse handlers
   const onWheel = (e: React.WheelEvent<HTMLDivElement>) => {
