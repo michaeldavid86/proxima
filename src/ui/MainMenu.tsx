@@ -24,7 +24,7 @@ export default function MainMenu() {
     <div className="flex h-full w-full flex-col items-center gap-10 overflow-y-auto p-8">
       <header className="text-center">
         <div className="font-mono text-[11px] uppercase tracking-[0.5em] text-mc-cyan/70">
-          Rendezvous &amp; Proximity Operations Trainer &mdash; v1.2 Spiral Edition
+          Rendezvous &amp; Proximity Operations Trainer &mdash; v1.3 Astro Edition
         </div>
         <div className="mt-2 text-5xl font-semibold tracking-[0.2em] text-mc-cyan">PROXIMA</div>
         <div className="mt-2 font-mono text-xs text-mc-dim">

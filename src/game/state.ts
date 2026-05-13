@@ -321,6 +321,13 @@ export interface GameStore extends GameState {
   togglePlannedAction: (id: string) => void
   clearPlannedActions: () => void
   commitPlannedActions: () => void
+  // v1.3+ unified planning commits.
+  // commitPlannedManeuver: take the live preview and convert it into a real
+  // scheduled plannedManeuver that the sim will fire at burn time.
+  commitPlannedManeuver: () => void
+  // commitAllPlanned: run commitPlannedManeuver + commitPlannedActions in one
+  // call, used by the PlanCommitBar's "Commit All" button.
+  commitAllPlanned: () => void
 }
 
 const buildMissionInit = (
@@ -431,6 +438,34 @@ export const useGame = create<GameStore>()((set) => ({
       return { plannedActions: next }
     }),
   clearPlannedActions: () => set({ plannedActions: new Set<string>() }),
+  commitPlannedManeuver: () => {
+    const s = useGame.getState()
+    const preview = s.plannedManeuverPreview
+    if (!preview || preview.dvMag <= 0) return
+    const ship = s.spacecraft[preview.craftId]
+    const burnTimeSec = s.simTimeSec + Math.max(0, preview.burnOffsetSec)
+    set({
+      plannedManeuver: {
+        shipId: preview.craftId,
+        burnTimeSec,
+        dvRic: preview.dvRic,
+      },
+      plannedManeuverPreview: null,
+    })
+    queueMicrotask(() => {
+      useGame.getState().pushLog({
+        t: s.simTimeSec,
+        text: `${ship?.name ?? preview.craftId}: maneuver queued (${preview.dvMag.toFixed(
+          2,
+        )} m/s, ignites in ${Math.round(preview.burnOffsetSec)} s).`,
+        tone: 'info',
+      })
+    })
+  },
+  commitAllPlanned: () => {
+    useGame.getState().commitPlannedManeuver()
+    useGame.getState().commitPlannedActions()
+  },
   commitPlannedActions: () => {
     // Lazy import to avoid a state.ts <-> actionRunner.ts cycle.
     void import('./actionRunner').then(({ invokeAction }) => {

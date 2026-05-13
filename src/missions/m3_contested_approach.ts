@@ -1,8 +1,13 @@
 import { R_EARTH } from '../physics/constants'
 import type { Mission } from './types'
 
-const aPlayer = R_EARTH + 550_000
-const aAdversary = R_EARTH + 500_000
+// Mission 3 baseline tuned for visual clarity: a 200 km altitude gap between
+// player (600 km) and adversary (400 km) makes the two orbits obviously
+// distinct on the map. The scripted prograde burn at T+200s is sized to
+// raise the adversary's apogee toward the player altitude so closure
+// happens within the 60-minute mission window.
+const aPlayer = R_EARTH + 600_000
+const aAdversary = R_EARTH + 400_000
 const inc = (45 * Math.PI) / 180
 
 // Adversary phased 5 degrees behind player in true anomaly.
@@ -86,11 +91,12 @@ export const mission3: Mission = {
   playerId: 'chaser',
   targetId: 'adversary',
   adversaryScript: [
-    // Script: at +300s, adversary executes a modest prograde burn to raise apogee
-    // and begin closing. A tuning constant — magnitude chosen to drift into
-    // proximity around 40-60 minutes into the run.
-    { kind: 'maneuver', atTimeSec: 300, shipId: 'adversary', dvRic: [0, 6, 0] },
-    // Turn on jammer when close (handled also by adaptive logic in turn.ts)
+    // Adversary executes a Hohmann-style first impulse at T+200s to raise its
+    // apogee toward the player's 600 km altitude. The transfer arrives near
+    // player altitude around T+45 min — well inside the 60-minute window.
+    { kind: 'maneuver', atTimeSec: 200, shipId: 'adversary', dvRic: [0, 55, 0] },
+    // Jammer comes up at T+30 min as the adversary nears proximity (the
+    // adaptive logic in turn.ts also turns it on automatically inside 30 km).
     { kind: 'jam', atTimeSec: 1800, shipId: 'adversary', target: 'victim-uplink' },
   ],
   groundStation: {
@@ -118,6 +124,7 @@ export const mission3: Mission = {
   initialViewMode: 'map',
   linkFGHz: 8,
   initialGuidance:
-    'Adversary trails you by 5° on a lower orbit. Expect a prograde burn around T+5 min. ' +
-    "If they close, consider emcon, pointing your antenna away, or a small defensive burn.",
+    'You are at 600 km. The adversary trails you 5° behind on a 400 km orbit, 200 km below. ' +
+    'Expect a Hohmann-style prograde burn around T+3 min that raises their apogee toward you. ' +
+    'If they close, consider emcon, pointing your antenna away, or a defensive burn to break geometry.',
 }

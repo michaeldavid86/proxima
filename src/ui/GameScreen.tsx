@@ -15,6 +15,7 @@ import AssetSelector from './AssetSelector'
 import ViewModeToggle from './ViewModeToggle'
 import ScalePresetSelector from './ScalePresetSelector'
 import ManeuverCostPopup from './ManeuverCostPopup'
+import PlanCommitBar from './PlanCommitBar'
 import Button from './components/Button'
 
 // 3D scene is lazy-loaded so the three.js bundle is only fetched when needed.
@@ -120,6 +121,7 @@ export default function GameScreen() {
               </div>
             )}
           </div>
+          <PlanCommitBar />
           <LogStrip />
         </div>
         <aside className="flex w-[340px] flex-col gap-2 border-l border-mc-cyan/20 bg-panel-fill p-2">

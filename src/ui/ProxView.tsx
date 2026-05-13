@@ -70,6 +70,7 @@ export default function ProxView() {
   const simTime = useGame((s) => s.simTimeSec)
   const plannedManeuver = useGame((s) => s.plannedManeuver)
   const setPlannedManeuver = useGame((s) => s.setPlannedManeuver)
+  const plannedManeuverPreview = useGame((s) => s.plannedManeuverPreview)
   const pushLog = useGame((s) => s.pushLog)
   const mode = useGame((s) => s.mode)
   const activeAssetId = useGame((s) => s.activeAssetId)
@@ -287,22 +288,48 @@ export default function ProxView() {
     ctx.stroke()
     ctx.restore()
 
-    // Preview planned RIC burn effect: if plannedManeuver exists and burn is within
-    // horizon, show post-burn predicted trajectory in amber.
-    if (plannedManeuver) {
-      const dt = Math.max(0, plannedManeuver.burnTimeSec - simTime)
+    // Preview planned RIC burn effect: the live preview (player-adjusted)
+    // takes priority over the committed plannedManeuver, so they see the new
+    // trajectory the moment they touch the panel.
+    const burnSpec: { dt: number; dvRic: Vec3 } | null = plannedManeuverPreview
+      ? {
+          dt: plannedManeuverPreview.burnOffsetSec,
+          dvRic: plannedManeuverPreview.dvRic,
+        }
+      : plannedManeuver
+        ? {
+            dt: Math.max(0, plannedManeuver.burnTimeSec - simTime),
+            dvRic: plannedManeuver.dvRic,
+          }
+        : null
+    if (burnSpec && (burnSpec.dvRic[0] !== 0 || burnSpec.dvRic[1] !== 0 || burnSpec.dvRic[2] !== 0)) {
+      const dt = burnSpec.dt
       if (dt <= horizonSec) {
         const sAtBurn = cwPropagate({ r: r0, v: v0 }, n, dt)
-        const burn = plannedManeuver.dvRic
+        const burn = burnSpec.dvRic
         const postR = sAtBurn.r
         const postV: Vec3 = [
           sAtBurn.v[0] + burn[0],
           sAtBurn.v[1] + burn[1],
           sAtBurn.v[2] + burn[2],
         ]
+        // Halo pass (semitransparent amber glow under the dashed line).
         ctx.save()
-        ctx.setLineDash([6, 4])
+        ctx.strokeStyle = 'rgba(255, 184, 0, 0.25)'
+        ctx.lineWidth = 6
+        ctx.beginPath()
+        for (let i = 0; i <= futureSteps; i++) {
+          const tau = (i / futureSteps) * horizonSec
+          const s = cwPropagate({ r: postR, v: postV }, n, tau)
+          const p = ricToScreen(s.r[0], s.r[1], W, H, he)
+          if (i === 0) ctx.moveTo(p.x, p.y)
+          else ctx.lineTo(p.x, p.y)
+        }
+        ctx.stroke()
+        // Main dashed trajectory.
+        ctx.setLineDash([8, 5])
         ctx.strokeStyle = colors.amber
+        ctx.lineWidth = 2.2
         ctx.beginPath()
         for (let i = 0; i <= futureSteps; i++) {
           const tau = (i / futureSteps) * horizonSec
@@ -342,24 +369,25 @@ export default function ProxView() {
     ctx.fillText(chaser.name, chaserPx.x + 8, chaserPx.y - 8)
 
     setVer((v) => v + 1)
-  }, [mission, spacecraft, simTime, plannedManeuver])
+  }, [mission, spacecraft, simTime, plannedManeuver, plannedManeuverPreview])
 
+  const commitPlannedManeuver = useGame((s) => s.commitPlannedManeuver)
   const commit = () => {
-    if (!mission) return
-    const dv = dvFromRicDir(dir, dvMag)
-    const burnTimeSec = simTime + Math.max(0.001, burnOffsetSec)
-    setPlannedManeuver({
-      shipId: controllerId,
-      burnTimeSec,
-      dvRic: dv,
-    })
-    pushLog({
-      t: simTime,
-      text: `RIC burn queued: ${dirNice(dir)} ${dvMag.toFixed(2)} m/s in ${burnOffsetSec.toFixed(0)} s.`,
-      tone: 'info',
-    })
+    if (!mission || dvMag <= 0) return
+    commitPlannedManeuver()
   }
-  const cancel = () => setPlannedManeuver(null)
+  const cancel = () => {
+    setPlannedManeuver(null)
+    setPlannedManeuverPreview(null)
+    setDvMag(0)
+  }
+  // keep these bound so they are exercised in callbacks elsewhere
+  void pushLog
+  void dvFromRicDir
+  void dirNice
+  void simTime
+  void controllerId
+  void burnOffsetSec
 
   // Short readout overlay
   let rangeKm = 0
@@ -386,8 +414,13 @@ export default function ProxView() {
         <span>rate {rangeRateMs > 0 ? '+' : ''}{rangeRateMs.toFixed(2)} m/s</span>
       </div>
       {!readOnly && (
-      <div className="pointer-events-auto absolute bottom-3 right-3 w-64 border border-mc-cyan/30 bg-panel-fill p-3 text-xs">
-        <div className="panel-title mb-2">RIC Impulse</div>
+      <div className="pointer-events-auto absolute bottom-3 right-3 w-72 border border-mc-cyan/30 bg-panel-fill p-3 text-xs">
+        <div className="mb-2 flex items-center justify-between">
+          <div className="panel-title">RIC Impulse</div>
+          {plannedManeuverPreview && dvMag > 0 && (
+            <span className="chip border-mc-amber/60 text-mc-amber">PREVIEW</span>
+          )}
+        </div>
         <div className="mb-2 grid grid-cols-3 gap-1">
           {(['V+', 'V-', 'R+', 'R-', 'H+', 'H-'] as RicDir[]).map((d) => (
             <button
@@ -421,9 +454,43 @@ export default function ProxView() {
             onChange={(e) => setBurnOffsetSec(Math.max(0, Number(e.target.value)))}
           />
         </label>
+
+        {plannedManeuverPreview && dvMag > 0 ? (
+          <div className="mb-2 border border-mc-amber/40 bg-mc-amber/5 p-2 font-mono text-[10px]">
+            <div className="mb-1 text-mc-amber">Projected effect</div>
+            <div className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-0.5">
+              <span className="text-mc-dim">Δv used</span>
+              <span className="text-mc-text">{plannedManeuverPreview.dvMag.toFixed(2)} m/s</span>
+              {plannedManeuverPreview.costYears > 0 && (
+                <>
+                  <span className="text-mc-dim">Life cost</span>
+                  <span className="text-mc-red">
+                    -{(plannedManeuverPreview.costYears * 12).toFixed(1)} mo
+                  </span>
+                </>
+              )}
+            </div>
+            <div className="mt-1 text-[10px] text-mc-dim">
+              Watch the dashed amber trajectory in this view.
+            </div>
+          </div>
+        ) : (
+          <div className="mb-2 text-[10px] text-mc-dim">
+            Adjust Δv to preview the post-burn trajectory.
+          </div>
+        )}
+
         <div className="flex gap-1">
-          <button className="btn flex-1 !py-1 !text-[10px]" onClick={commit}>Commit</button>
-          <button className="btn flex-1 !py-1 !text-[10px]" onClick={cancel}>Cancel</button>
+          <button
+            className="btn btn-warn flex-1 !py-1 !text-[10px]"
+            onClick={commit}
+            disabled={dvMag <= 0}
+          >
+            Commit Maneuver
+          </button>
+          <button className="btn flex-1 !py-1 !text-[10px]" onClick={cancel}>
+            Cancel
+          </button>
         </div>
       </div>
       )}

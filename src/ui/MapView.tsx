@@ -17,6 +17,7 @@ import { applyImpulseEci, burnFromRic } from '../physics/maneuver'
 import { useGame, type SpacecraftState } from '../game/state'
 import { computeManeuverPreview } from '../game/maneuver-preview'
 import { colors, assetColor } from '../theme/colors'
+import { buildEarthDiskCanvas } from '../3d/earth-texture'
 
 interface ViewState {
   // World coords centered on screen, meters.
@@ -226,129 +227,44 @@ export default function MapView() {
       ctx.stroke()
     }
 
-    // Earth — drawn as a shaded sphere with continent silhouettes and an
-    // atmospheric halo. The top-down map looks down on the orbital plane
-    // (the equator for 0° inclination), so we project the equirectangular
-    // continent canvas onto the disk as a polar-style view: the visible disk
-    // is the northern hemisphere with longitude 0 facing right. This is a
-    // schematic projection, not a geographer's view; it reads as Earth at a
-    // glance, which is what matters for the trainer.
+    // Earth — orthographic-projected globe using the shared continent texture
+    // so the 2D and 3D views look like the same planet. Surrounding cyan
+    // atmospheric halo + thin rim line. The Earth disk image is built once
+    // (cached in earth-texture.ts) so per-frame redraw is just an Image draw.
     const earthCenter = worldToScreen(0, 0, vs, W, H)
     const earthPx = R_EARTH * vs.zoom
     {
-      // Outer atmosphere halo (semi-transparent cyan ring).
+      const cx = earthCenter.x
+      const cy = earthCenter.y
+
+      // Outer atmospheric halo: soft cyan ring expanding past the disk.
       const haloGrad = ctx.createRadialGradient(
-        earthCenter.x,
-        earthCenter.y,
-        earthPx * 0.95,
-        earthCenter.x,
-        earthCenter.y,
-        earthPx * 1.18,
+        cx, cy, earthPx * 0.95,
+        cx, cy, earthPx * 1.22,
       )
-      haloGrad.addColorStop(0, 'rgba(95, 179, 255, 0.18)')
+      haloGrad.addColorStop(0, 'rgba(95, 179, 255, 0.22)')
+      haloGrad.addColorStop(0.6, 'rgba(95, 179, 255, 0.06)')
       haloGrad.addColorStop(1, 'rgba(95, 179, 255, 0)')
       ctx.beginPath()
-      ctx.arc(earthCenter.x, earthCenter.y, earthPx * 1.18, 0, 2 * Math.PI)
+      ctx.arc(cx, cy, earthPx * 1.22, 0, 2 * Math.PI)
       ctx.fillStyle = haloGrad
       ctx.fill()
 
-      // Ocean fill — radial gradient suggests a lit sphere.
-      const oceanGrad = ctx.createRadialGradient(
-        earthCenter.x - earthPx * 0.35,
-        earthCenter.y - earthPx * 0.35,
-        earthPx * 0.05,
-        earthCenter.x,
-        earthCenter.y,
-        earthPx * 1.05,
-      )
-      oceanGrad.addColorStop(0, '#1d4f8a')
-      oceanGrad.addColorStop(0.55, '#103a6e')
-      oceanGrad.addColorStop(0.9, '#0a2238')
-      oceanGrad.addColorStop(1, '#06182b')
-      ctx.beginPath()
-      ctx.arc(earthCenter.x, earthCenter.y, earthPx, 0, 2 * Math.PI)
-      ctx.fillStyle = oceanGrad
-      ctx.fill()
-
-      // Stylized continents inside the disk. Drawn as soft amorphous shapes
-      // in green/tan rather than projecting the full equirectangular map,
-      // which would be misleading at top-down orbital scale. Land masses are
-      // placed at fixed angles around the disk so the planet always reads
-      // as Earth-like regardless of the camera orientation.
-      ctx.save()
-      ctx.beginPath()
-      ctx.arc(earthCenter.x, earthCenter.y, earthPx * 0.985, 0, 2 * Math.PI)
-      ctx.clip()
-      const cx = earthCenter.x
-      const cy = earthCenter.y
-      const r = earthPx
-      // Helper: draw a soft blob at polar (angle, radial fraction) with given size.
-      const blob = (
-        angleRad: number,
-        radial: number,
-        rx: number,
-        ry: number,
-        rot: number,
-        color: string,
-      ) => {
-        const px = cx + Math.cos(angleRad) * radial * r
-        const py = cy + Math.sin(angleRad) * radial * r
-        ctx.save()
-        ctx.translate(px, py)
-        ctx.rotate(rot)
-        ctx.fillStyle = color
-        ctx.beginPath()
-        ctx.ellipse(0, 0, rx * r, ry * r, 0, 0, 2 * Math.PI)
-        ctx.fill()
-        ctx.restore()
-      }
-      // Major land masses (rough placements for visual identifiability).
-      // Greens — temperate / equatorial vegetation.
-      blob(-2.5, 0.38, 0.22, 0.16, 0.4, '#3d5a3a') // North America
-      blob(-1.6, 0.55, 0.14, 0.22, -0.1, '#3a5538') // South America
-      blob(0.0, 0.36, 0.18, 0.14, 0.2, '#3d5a3a') // Africa upper
-      blob(0.45, 0.55, 0.12, 0.18, 0.1, '#3d5a3a') // Africa lower
-      blob(1.0, 0.32, 0.24, 0.14, 0.3, '#3d5a3a') // Asia
-      blob(1.9, 0.6, 0.13, 0.09, -0.2, '#3d5a3a') // Australia
-      blob(-2.2, 0.18, 0.10, 0.08, 0.0, '#3d5a3a') // Europe
-      // Desert tan overlay
-      ctx.globalAlpha = 0.55
-      blob(0.05, 0.34, 0.16, 0.07, 0.15, '#a07a4a') // Sahara
-      blob(1.05, 0.30, 0.18, 0.06, 0.3, '#a07a4a') // Central Asia / Gobi
-      blob(1.9, 0.6, 0.09, 0.05, -0.2, '#a07a4a') // Outback
-      ctx.globalAlpha = 1
-      // Polar ice (top and bottom of disk)
-      const ice = ctx.createRadialGradient(cx, cy, earthPx * 0.7, cx, cy, earthPx)
-      ice.addColorStop(0, 'rgba(255,255,255,0)')
-      ice.addColorStop(0.9, 'rgba(255,255,255,0)')
-      ice.addColorStop(1, 'rgba(255,255,255,0.4)')
-      ctx.fillStyle = ice
-      ctx.beginPath()
-      ctx.arc(cx, cy, earthPx, 0, 2 * Math.PI)
-      ctx.fill()
-      ctx.restore()
-
-      // Highlight (specular-like) toward the sun direction (top-left).
-      const highlight = ctx.createRadialGradient(
-        cx - earthPx * 0.45,
-        cy - earthPx * 0.45,
-        0,
-        cx - earthPx * 0.45,
-        cy - earthPx * 0.45,
-        earthPx * 0.65,
-      )
-      highlight.addColorStop(0, 'rgba(255,255,255,0.18)')
-      highlight.addColorStop(1, 'rgba(255,255,255,0)')
+      // Draw the cached orthographic Earth disk, scaled to the current Earth
+      // pixel size. The image already includes oceans, continents, ice caps,
+      // climate overlays, and spherical lighting.
+      const disk = buildEarthDiskCanvas()
       ctx.save()
       ctx.beginPath()
       ctx.arc(cx, cy, earthPx, 0, 2 * Math.PI)
       ctx.clip()
-      ctx.fillStyle = highlight
-      ctx.fillRect(cx - earthPx, cy - earthPx, earthPx * 2, earthPx * 2)
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(disk, cx - earthPx, cy - earthPx, earthPx * 2, earthPx * 2)
       ctx.restore()
 
-      // Rim line
-      ctx.strokeStyle = '#1a4267'
+      // Thin atmospheric rim line for a crisp planetary edge.
+      ctx.strokeStyle = 'rgba(95, 179, 255, 0.55)'
       ctx.lineWidth = 1.2
       ctx.beginPath()
       ctx.arc(cx, cy, earthPx, 0, 2 * Math.PI)
@@ -419,10 +335,21 @@ export default function MapView() {
       const coeAfter = previewSource.projectedElements
       if (Number.isFinite(coeAfter.a) && coeAfter.e < 1) {
         const pts = sampleOrbitXY(coeAfter)
+        // Halo pass: thick amber glow under the dashed line.
         ctx.save()
-        ctx.setLineDash([6, 4])
+        ctx.strokeStyle = 'rgba(255, 184, 0, 0.25)'
+        ctx.lineWidth = 6
+        ctx.beginPath()
+        for (let i = 0; i < pts.length; i++) {
+          const p = worldToScreen(pts[i][0], pts[i][1], vs, W, H)
+          if (i === 0) ctx.moveTo(p.x, p.y)
+          else ctx.lineTo(p.x, p.y)
+        }
+        ctx.stroke()
+        // Main dashed orbit.
+        ctx.setLineDash([8, 5])
         ctx.strokeStyle = colors.amber
-        ctx.lineWidth = 1.4
+        ctx.lineWidth = 2.2
         ctx.beginPath()
         for (let i = 0; i < pts.length; i++) {
           const p = worldToScreen(pts[i][0], pts[i][1], vs, W, H)
@@ -667,23 +594,22 @@ export default function MapView() {
     setBurnOffsetSec(Math.max(5, Math.round(tWait)))
   }
 
+  const commitPlannedManeuver = useGame((s) => s.commitPlannedManeuver)
   const planCommit = () => {
-    if (!mission) return
-    const ship = spacecraft[controllerId]
-    if (!ship) return
-    const dv = dirRic(dir).map((x) => x * dvMag) as Vec3
-    const burnTimeSec = simTime + Math.max(0, burnOffsetSec)
-    setPlannedManeuver({ shipId: controllerId, burnTimeSec, dvRic: dv })
-    commitLog({
-      t: simTime,
-      text: `${ship.name}: burn queued ${dirLabel(dir)} ${dvMag.toFixed(1)} m/s in ${Math.round(burnOffsetSec)} s.`,
-      tone: 'info',
-    })
+    if (!mission || dvMag <= 0) return
+    // The live-preview useEffect above keeps plannedManeuverPreview in sync
+    // with the panel inputs. Just delegate to the store action that promotes
+    // it into a real scheduled plannedManeuver.
+    commitPlannedManeuver()
   }
   const planCancel = () => {
     setPlannedManeuver(null)
+    setPlannedManeuverPreview(null)
+    setDvMag(0)
     setClickedNu(null)
   }
+  // void: keep commitLog binding live for log entries elsewhere in the file
+  void commitLog
 
   let relKm = 0
   let relVMs = 0
@@ -716,8 +642,13 @@ export default function MapView() {
       </div>
 
       {!readOnly && (
-      <div className="pointer-events-auto absolute bottom-3 right-3 w-64 border border-mc-cyan/30 bg-panel-fill p-3 text-xs">
-        <div className="panel-title mb-2">Plan Maneuver</div>
+      <div className="pointer-events-auto absolute bottom-3 right-3 w-72 border border-mc-cyan/30 bg-panel-fill p-3 text-xs">
+        <div className="mb-2 flex items-center justify-between">
+          <div className="panel-title">Plan Maneuver</div>
+          {plannedManeuverPreview && dvMag > 0 && (
+            <span className="chip border-mc-amber/60 text-mc-amber">PREVIEW</span>
+          )}
+        </div>
         <div className="mb-2 grid grid-cols-2 gap-1">
           {(['prograde', 'retrograde', 'radial_out', 'radial_in', 'normal', 'anti_normal'] as DirId[]).map(
             (d) => (
@@ -753,10 +684,83 @@ export default function MapView() {
             onChange={(e) => setBurnOffsetSec(Math.max(0, Number(e.target.value)))}
           />
         </label>
-        <div className="mb-2 text-[10px] text-mc-dim">Click an orbit point to set burn time.</div>
+
+        {/* Inline cost preview. Shows what the burn will do right where the
+            cadet is adjusting the inputs, so they can decide before commit. */}
+        {plannedManeuverPreview && dvMag > 0 ? (
+          <div className="mb-2 border border-mc-amber/40 bg-mc-amber/5 p-2 font-mono text-[10px]">
+            <div className="mb-1 text-mc-amber">Projected effect</div>
+            <div className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-0.5">
+              <span className="text-mc-dim">Δv used</span>
+              <span className="text-mc-text">{plannedManeuverPreview.dvMag.toFixed(2)} m/s</span>
+              {plannedManeuverPreview.costYears > 0 && (
+                <>
+                  <span className="text-mc-dim">Life cost</span>
+                  <span className="text-mc-red">
+                    -{(plannedManeuverPreview.costYears * 12).toFixed(1)} mo
+                  </span>
+                </>
+              )}
+              <span className="text-mc-dim">Peri (now → next)</span>
+              <span className="text-mc-text">
+                {(
+                  (plannedManeuverPreview.currentElements.a *
+                    (1 - plannedManeuverPreview.currentElements.e) -
+                    R_EARTH) /
+                  1000
+                ).toFixed(0)}{' '}
+                →{' '}
+                {Number.isFinite(plannedManeuverPreview.projectedElements.a)
+                  ? (
+                      (plannedManeuverPreview.projectedElements.a *
+                        (1 - plannedManeuverPreview.projectedElements.e) -
+                        R_EARTH) /
+                      1000
+                    ).toFixed(0)
+                  : '—'}{' '}
+                km
+              </span>
+              <span className="text-mc-dim">Apo (now → next)</span>
+              <span className="text-mc-text">
+                {(
+                  (plannedManeuverPreview.currentElements.a *
+                    (1 + plannedManeuverPreview.currentElements.e) -
+                    R_EARTH) /
+                  1000
+                ).toFixed(0)}{' '}
+                →{' '}
+                {Number.isFinite(plannedManeuverPreview.projectedElements.a)
+                  ? (
+                      (plannedManeuverPreview.projectedElements.a *
+                        (1 + plannedManeuverPreview.projectedElements.e) -
+                        R_EARTH) /
+                      1000
+                    ).toFixed(0)
+                  : '—'}{' '}
+                km
+              </span>
+            </div>
+            <div className="mt-1 text-[10px] text-mc-dim">
+              Watch the dashed amber orbit on the map.
+            </div>
+          </div>
+        ) : (
+          <div className="mb-2 text-[10px] text-mc-dim">
+            Adjust Δv to preview the new orbit. Click an orbit point to set burn time.
+          </div>
+        )}
+
         <div className="flex gap-1">
-          <button className="btn flex-1 !py-1 !text-[10px]" onClick={planCommit}>Commit</button>
-          <button className="btn flex-1 !py-1 !text-[10px]" onClick={planCancel}>Cancel</button>
+          <button
+            className="btn btn-warn flex-1 !py-1 !text-[10px]"
+            onClick={planCommit}
+            disabled={dvMag <= 0}
+          >
+            Commit Maneuver
+          </button>
+          <button className="btn flex-1 !py-1 !text-[10px]" onClick={planCancel}>
+            Cancel
+          </button>
         </div>
       </div>
       )}

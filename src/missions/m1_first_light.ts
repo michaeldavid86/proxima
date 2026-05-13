@@ -2,8 +2,11 @@ import { R_EARTH } from '../physics/constants'
 import { periodFromA } from '../physics/orbital-elements'
 import type { Mission } from './types'
 
+// Mission 1 baseline tuned for visual clarity: a 200 km altitude gap between
+// player and target makes both orbits clearly distinct on the 2D map. Hohmann
+// transfer cost is ~112 m/s; player budget is ~480 m/s.
 const aPlayer = R_EARTH + 400_000
-const aTarget = R_EARTH + 420_000
+const aTarget = R_EARTH + 600_000
 
 export const mission1: Mission = {
   id: 'm1_first_light',
@@ -78,6 +81,6 @@ export const mission1: Mission = {
   maxDurationSec: 4 * periodFromA(aPlayer),
   initialViewMode: 'map',
   initialGuidance:
-    'Target leads you by 60° on a slightly higher orbit. A small prograde burn now will ' +
-    'raise your orbit to close the phasing gap; circularize when your radius matches the target.',
+    'Target leads you by 60° on a 600 km orbit, 200 km above yours. Plan a prograde burn ' +
+    'to begin a Hohmann transfer up to the target altitude, then circularize at apogee.',
 }

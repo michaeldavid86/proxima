@@ -87,6 +87,8 @@ const buildInitialState = (vignetteId: string): GameStore => {
     togglePlannedAction: () => {},
     clearPlannedActions: () => {},
     commitPlannedActions: () => {},
+    commitPlannedManeuver: () => {},
+    commitAllPlanned: () => {},
   }
   return base
 }
