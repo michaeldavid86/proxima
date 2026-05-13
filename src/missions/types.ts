@@ -151,4 +151,11 @@ export interface Mission {
   // When present, the mission uses asset-selector UX and observation-coverage
   // scoring. playerId should match the first entry (default active asset).
   assets?: string[]
+  // v1.4: engagement-consideration keep zones, expressed in the target's RIC
+  // frame. Visualized in 2D and 3D; advisory only in v1.4 (no scoring impact).
+  keepZones?: KeepZone[]
 }
+
+// Forward import for the keep-zone type (engagement layer owns the math).
+import type { KeepZone } from '../engagement/keep-zones'
+export type { KeepZone }

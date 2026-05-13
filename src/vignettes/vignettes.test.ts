@@ -89,6 +89,21 @@ const buildInitialState = (vignetteId: string): GameStore => {
     commitPlannedActions: () => {},
     commitPlannedManeuver: () => {},
     commitAllPlanned: () => {},
+    setCatsAngle: () => {},
+    setPassiveSafety: () => {},
+    setTenToOneShown: () => {},
+    setRpoPhase: () => {},
+    setLearningSection: () => {},
+    markLearningSectionDone: () => {},
+    recordProblemAnswer: () => {},
+    unlockBadge: () => {},
+    dismissBadgeToast: () => {},
+    markHistoricalOpened: () => {},
+    markSandboxModeVisited: () => {},
+    markTenToOneViolated: () => {},
+    markCloseInReached: () => {},
+    markPlaneMatchingExited: () => {},
+    resetRunTracking: () => {},
   }
   return base
 }

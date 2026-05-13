@@ -6,13 +6,17 @@ import { historicalVignettes } from '../historical'
 import Button from './components/Button'
 import Panel from './components/Panel'
 import References from './References'
+import BadgesGallery from './BadgesGallery'
+import { BADGE_COUNT } from '../progression/badges'
 import type { Mission } from '../missions/types'
 
 export default function MainMenu() {
   const loadMission = useGame((s) => s.loadMission)
   const setScreen = useGame((s) => s.setScreen)
   const openHistorical = useGame((s) => s.openHistorical)
+  const unlockedCount = useGame((s) => Object.keys(s.badges.unlocked).length)
   const [refsOpen, setRefsOpen] = useState(false)
+  const [badgesOpen, setBadgesOpen] = useState(false)
 
   const onLaunch = (m: Mission, mode: GameMode) => {
     const vignette = m.vignetteId ? vignettesById[m.vignetteId] ?? null : null
@@ -24,7 +28,7 @@ export default function MainMenu() {
     <div className="flex h-full w-full flex-col items-center gap-10 overflow-y-auto p-8">
       <header className="text-center">
         <div className="font-mono text-[11px] uppercase tracking-[0.5em] text-mc-cyan/70">
-          Rendezvous &amp; Proximity Operations Trainer &mdash; v1.3 Astro Edition
+          Rendezvous &amp; Proximity Operations Trainer &mdash; v1.4 Curriculum Edition
         </div>
         <div className="mt-2 text-5xl font-semibold tracking-[0.2em] text-mc-cyan">PROXIMA</div>
         <div className="mt-2 font-mono text-xs text-mc-dim">
@@ -101,6 +105,36 @@ export default function MainMenu() {
         <div className="mb-3 flex items-baseline justify-between">
           <h2 className="panel-title">
             <span className="chip mr-2 border-mc-green/60 text-mc-green">NEW</span>
+            Foundational RPO Learning Track
+          </h2>
+          <span className="font-mono text-[10px] text-mc-dim">
+            Ten short sections covering the language of rendezvous and proximity ops.
+          </span>
+        </div>
+        <button
+          onClick={() => setScreen('learning')}
+          className="group flex w-full items-start gap-4 border border-mc-cyan/40 bg-panel-fill p-4 text-left transition-colors hover:border-mc-cyan hover:bg-mc-cyan/5"
+        >
+          <span className="text-3xl">📖</span>
+          <div className="flex flex-1 flex-col gap-1">
+            <div className="font-mono text-sm text-mc-cyan">Learning Track</div>
+            <div className="text-xs leading-relaxed text-mc-text">
+              Phases of rendezvous, the RIC frame, the CW model, perch and NMC trajectories, and
+              the engagement considerations that decide when an approach is safe. Three worked
+              example problems and a self-check quiz at the end.
+            </div>
+            <div className="mt-1 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-mc-dim">
+              <span>10 sections · ~45 min · undergraduate level</span>
+            </div>
+          </div>
+          <span className="font-mono text-[10px] text-mc-cyan">Open →</span>
+        </button>
+      </section>
+
+      <section className="w-full max-w-6xl">
+        <div className="mb-3 flex items-baseline justify-between">
+          <h2 className="panel-title">
+            <span className="chip mr-2 border-mc-green/60 text-mc-green">NEW</span>
             RPO Trajectory Sandbox
           </h2>
           <span className="font-mono text-[10px] text-mc-dim">
@@ -168,8 +202,15 @@ export default function MainMenu() {
         <button onClick={() => setRefsOpen(true)} className="text-mc-cyan hover:underline">
           References
         </button>
+        <button
+          onClick={() => setBadgesOpen(true)}
+          className="text-mc-amber hover:underline"
+        >
+          Badges {unlockedCount}/{BADGE_COUNT}
+        </button>
       </footer>
       {refsOpen && <References onClose={() => setRefsOpen(false)} />}
+      {badgesOpen && <BadgesGallery onClose={() => setBadgesOpen(false)} />}
     </div>
   )
 }

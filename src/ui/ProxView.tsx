@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGame } from '../game/state'
 import { computeManeuverPreview } from '../game/maneuver-preview'
+import { drawKeepZones2D } from './KeepZoneRenderer2D'
 import { colors } from '../theme/colors'
 import { MU_EARTH } from '../physics/constants'
 import { meanMotionFromA, stateToCoe } from '../physics/orbital-elements'
@@ -235,6 +236,17 @@ export default function ProxView() {
     ctx.lineTo(p4.x, p4.y)
     ctx.closePath()
     ctx.fill()
+
+    // v1.4 keep-in / keep-out zones from mission data, drawn in the target-
+    // centered RIC view. Translucent green for keep-in, red for keep-out.
+    if (mission?.keepZones?.length) {
+      drawKeepZones2D(
+        ctx,
+        mission.keepZones,
+        (rRic, vRic) => ricToScreen(rRic, vRic, W, H, he),
+        he,
+      )
+    }
 
     // Scale label
     ctx.fillStyle = colors.dim

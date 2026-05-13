@@ -107,4 +107,39 @@ export const mission4: Mission = {
     'Use A and B to switch between Alpha and Bravo. Plan burns that balance the two ' +
     'assets so one is always in range of the target. Overcommitting either asset ' +
     'will break coverage when they have to move.',
+  // v1.4 approach-corridor keep-in zones along +/- V-bar (10° half-angle,
+  // 100 km range). Advisory only: cadets are encouraged to stay inside the
+  // corridor during approach for a passive-safe geometry.
+  keepZones: [
+    {
+      id: 'corridor_east',
+      type: 'keep_in',
+      label: '+V-bar approach corridor',
+      description:
+        'Recommended approach corridor along the +V-bar axis. Passive-safe ' +
+        'if you stop burning. Stay inside for clean inspection geometry.',
+      shape: {
+        kind: 'cone',
+        apexRic: [0, 0, 0],
+        axis: [0, 1, 0],
+        halfAngleDeg: 10,
+        rangeM: 100_000,
+      },
+    },
+    {
+      id: 'corridor_west',
+      type: 'keep_in',
+      label: '-V-bar approach corridor',
+      description:
+        'Recommended approach corridor along the -V-bar axis. Mirror of the ' +
+        '+V-bar corridor for west-side approach geometry.',
+      shape: {
+        kind: 'cone',
+        apexRic: [0, 0, 0],
+        axis: [0, -1, 0],
+        halfAngleDeg: 10,
+        rangeM: 100_000,
+      },
+    },
+  ],
 }

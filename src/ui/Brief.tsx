@@ -2,6 +2,8 @@ import { useGame } from '../game/state'
 import Button from './components/Button'
 import Panel from './components/Panel'
 import { R_EARTH } from '../physics/constants'
+import { cuesByMission } from '../cross-domain/cues'
+import CrossDomainCueChip from './CrossDomainCueChip'
 
 export default function Brief() {
   const mission = useGame((s) => s.mission)
@@ -11,6 +13,7 @@ export default function Brief() {
   const setPaused = useGame((s) => s.setPaused)
   if (!mission) return null
   const isWatch = mode === 'watch'
+  const cues = cuesByMission(mission.id)
 
   const start = () => {
     setScreen('game')
@@ -58,6 +61,17 @@ export default function Brief() {
         <Panel title="Situation">
           <div className="p-4 text-sm leading-relaxed text-mc-text">{mission.brief}</div>
         </Panel>
+      )}
+
+      {cues.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-mc-dim">
+            Think across domains:
+          </span>
+          {cues.map((c) => (
+            <CrossDomainCueChip key={c.id} cue={c} />
+          ))}
+        </div>
       )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

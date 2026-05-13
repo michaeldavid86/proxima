@@ -15,6 +15,8 @@ import ManeuverPreview3D from './ManeuverPreview3D'
 import CameraController from './CameraController'
 import RicFrame3D from './RicFrame3D'
 import CpaMarker3D from './CpaMarker3D'
+import KeepZoneRenderer3D from './KeepZoneRenderer3D'
+import CatsAngleIndicator3D from './CatsAngleIndicator3D'
 import { mToUnits } from './units'
 import { colors, assetColor } from '../theme/colors'
 
@@ -94,6 +96,8 @@ export default function Scene3D() {
         <ManeuverPreview3D />
         <CpaMarker3D />
         <RicFrame3D />
+        <KeepZoneRenderer3D />
+        <CatsAngleIndicator3D />
         <OrbitControls
           makeDefault
           enableDamping

@@ -20,6 +20,7 @@ const FAMILIES: TrajectoryFamily[] = ['perch', 'linear_drift', 'nmc']
 
 export default function TrajectorySandbox() {
   const setScreen = useGame((s) => s.setScreen)
+  const markSandboxModeVisited = useGame((s) => s.markSandboxModeVisited)
   const [family, setFamily] = useState<TrajectoryFamily>('linear_drift')
   const [params, setParams] = useState<TrajectoryParams>(familyDefaultParams('linear_drift'))
   const [playing, setPlaying] = useState(false)
@@ -30,11 +31,15 @@ export default function TrajectorySandbox() {
   const card = useMemo(() => familyTeachingCard(family), [family])
   const lastFrameRef = useRef<number | null>(null)
 
-  // Reset parameters and clock when family changes.
+  // Reset parameters and clock when family changes. Also tracks the visited
+  // mode for the v1.4 Sandbox Explorer badge.
   useEffect(() => {
     setParams(familyDefaultParams(family))
     setTNow(0)
-  }, [family])
+    const modeKey =
+      family === 'linear_drift' ? 'drift' : (family as 'perch' | 'nmc')
+    markSandboxModeVisited(modeKey)
+  }, [family, markSandboxModeVisited])
 
   // Playback ticker (real-time, 4x speed by default so a full period takes ~1.4 min).
   useEffect(() => {

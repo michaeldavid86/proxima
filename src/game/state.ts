@@ -11,6 +11,10 @@ import type {
 } from '../missions/types'
 import type { NarrationBlock, VignetteScript } from '../vignettes/types'
 import { budgetFromMass, lifeYearsFromDv } from './operational-life'
+import type { CatsAngleResult } from '../engagement/cats'
+import type { PassiveSafetyResult } from '../engagement/passive-safety'
+import type { BadgeUnlock } from '../progression/types'
+import { loadBadgeUnlocks, saveBadgeUnlocks } from '../progression/storage'
 
 export type LinkStatus = 'nominal' | 'degraded' | 'denied'
 export type MissionStatus = 'active' | 'success' | 'failure'
@@ -18,7 +22,7 @@ export type ViewMode = 'map' | 'prox'
 // v1.3: 2D vs 3D rendering. Default '2d' preserves v1.2 behavior exactly.
 export type ViewMode3D = '2d' | '3d'
 export type ScalePreset = 'regime' | 'close' | 'proximity' | 'free'
-export type Screen = 'menu' | 'brief' | 'game' | 'debrief' | 'historical' | 'sandbox'
+export type Screen = 'menu' | 'brief' | 'game' | 'debrief' | 'historical' | 'sandbox' | 'learning'
 // v1.1: widened to include Watch-mode speeds (0.5, 2, 4) alongside Play-mode warps.
 export type TimeWarp = 0.5 | 1 | 2 | 4 | 10 | 100 | 1000
 export type GameMode = 'play' | 'watch'
@@ -158,6 +162,37 @@ export interface GameState {
   // as a single batch rather than firing each one immediately on click. This
   // mirrors the maneuver planner's commit/cancel pattern.
   plannedActions: Set<string>
+  // v1.4 engagement considerations. All advisory; no scoring impact in v1.4.
+  catsAngle: CatsAngleResult | null
+  passiveSafety: PassiveSafetyResult | null
+  tenToOneShownThisRun: boolean
+  // v1.4 RPO phase indicator (separate from the existing `currentPhase` which
+  // is used by Watch vignettes). This one is derived from orbital geometry.
+  rpoPhase: 'plane_matching' | 'shape_align' | 'phasing' | 'close_in'
+  // v1.4 Learning Track. Reading-list sidebar and section nav use this slice.
+  // Persists for the session only; not part of the mission state.
+  learning: {
+    activeSection: number
+    completed: boolean[]
+    problemAnswers: Record<string, { correct: boolean; firstTry: boolean }>
+  }
+  // v1.4 Progression. Unlocked badges are persisted to localStorage. The
+  // toast queue holds newly-unlocked badge ids for transient display; the UI
+  // drains it as each toast finishes.
+  badges: {
+    unlocked: Record<string, BadgeUnlock>
+    toastQueue: string[]
+  }
+  // Per-run tracking for badges that observe behavior across a single mission.
+  runTracking: {
+    tenToOneViolatedThisRun: boolean
+    reachedCloseInThisRun: boolean
+    exitedPlaneMatchingThisRun: boolean
+  }
+  // Discovery tracking that persists across runs (in-memory; not localStorage
+  // by design — re-derived when the user revisits).
+  historicalsOpened: Set<string>
+  sandboxModesVisited: Set<'perch' | 'drift' | 'nmc'>
   // v1.1 Watch mode
   mode: GameMode
   vignette: VignetteScript | null
@@ -272,6 +307,26 @@ export const initialGameState = (): GameState => ({
   scalePreset: 'regime',
   plannedManeuverPreview: null,
   plannedActions: new Set<string>(),
+  catsAngle: null,
+  passiveSafety: null,
+  tenToOneShownThisRun: false,
+  rpoPhase: 'phasing',
+  learning: {
+    activeSection: 0,
+    completed: [],
+    problemAnswers: {},
+  },
+  badges: {
+    unlocked: loadBadgeUnlocks(),
+    toastQueue: [],
+  },
+  runTracking: {
+    tenToOneViolatedThisRun: false,
+    reachedCloseInThisRun: false,
+    exitedPlaneMatchingThisRun: false,
+  },
+  historicalsOpened: new Set<string>(),
+  sandboxModesVisited: new Set<'perch' | 'drift' | 'nmc'>(),
 })
 
 // Seed operational-life state from a mission's player loadout.
@@ -328,6 +383,24 @@ export interface GameStore extends GameState {
   // commitAllPlanned: run commitPlannedManeuver + commitPlannedActions in one
   // call, used by the PlanCommitBar's "Commit All" button.
   commitAllPlanned: () => void
+  // v1.4 engagement state setters.
+  setCatsAngle: (r: CatsAngleResult | null) => void
+  setPassiveSafety: (r: PassiveSafetyResult | null) => void
+  setTenToOneShown: (v: boolean) => void
+  setRpoPhase: (p: GameState['rpoPhase']) => void
+  // v1.4 Learning Track setters.
+  setLearningSection: (i: number) => void
+  markLearningSectionDone: (i: number) => void
+  recordProblemAnswer: (problemId: string, correct: boolean) => void
+  // v1.4 Progression setters.
+  unlockBadge: (id: string) => void
+  dismissBadgeToast: (id: string) => void
+  markHistoricalOpened: (id: string) => void
+  markSandboxModeVisited: (mode: 'perch' | 'drift' | 'nmc') => void
+  markTenToOneViolated: () => void
+  markCloseInReached: () => void
+  markPlaneMatchingExited: () => void
+  resetRunTracking: () => void
 }
 
 const buildMissionInit = (
@@ -365,7 +438,20 @@ export const useGame = create<GameStore>()((set) => ({
   loadMission: (m, opts) => {
     const mode = opts?.mode ?? 'play'
     const vignette = opts?.vignette ?? null
-    set(buildMissionInit(m, mode, vignette))
+    const cur = useGame.getState()
+    set({
+      ...buildMissionInit(m, mode, vignette),
+      // Preserve session-persistent progression state across mission boundaries.
+      badges: cur.badges,
+      historicalsOpened: cur.historicalsOpened,
+      sandboxModesVisited: cur.sandboxModesVisited,
+      // Reset per-run badge tracking on each new mission.
+      runTracking: {
+        tenToOneViolatedThisRun: false,
+        reachedCloseInThisRun: false,
+        exitedPlaneMatchingThisRun: false,
+      },
+    })
   },
   setPaused: (p) => set({ paused: p }),
   togglePaused: () => set((s) => ({ paused: !s.paused })),
@@ -382,8 +468,29 @@ export const useGame = create<GameStore>()((set) => ({
       else next[id] = eff
       return { activeEffects: next }
     }),
-  endMission: (status, debrief) =>
-    set({ missionStatus: status, debrief, screen: 'debrief', paused: true }),
+  endMission: (status, debrief) => {
+    set({ missionStatus: status, debrief, screen: 'debrief', paused: true })
+    queueMicrotask(() => {
+      const st = useGame.getState()
+      if (status !== 'success') return
+      const id = st.missionId
+      // Mission completion badges.
+      if (id === 'm0_primer') st.unlockBadge('primer_watched')
+      else if (id === 'm1_first_light') st.unlockBadge('m1_complete')
+      else if (id === 'm2_quiet_inspector') st.unlockBadge('m2_complete')
+      else if (id === 'm3_contested_approach') st.unlockBadge('m3_complete')
+      else if (id === 'm4_handoff') st.unlockBadge('m4_complete')
+      // Discipline / discovery badges that observe whole-mission behavior.
+      if (!st.runTracking.tenToOneViolatedThisRun && id && id !== 'm0_primer') {
+        st.unlockBadge('within_the_rule')
+      }
+      if (st.runTracking.exitedPlaneMatchingThisRun) st.unlockBadge('plane_match')
+      if (st.runTracking.reachedCloseInThisRun) st.unlockBadge('close_in')
+      // Efficient Op: spent less than one year of operational life.
+      const spent = st.operationalLife.initialYears - st.operationalLife.currentYears
+      if (id && id !== 'm0_primer' && spent < 1) st.unlockBadge('efficient_op')
+    })
+  },
   resetRun: () =>
     set((s) => {
       if (!s.mission) return {}
@@ -391,21 +498,37 @@ export const useGame = create<GameStore>()((set) => ({
         ...buildMissionInit(s.mission, s.mode, s.vignette),
         screen: 'game',
         paused: true,
+        // Preserve session-persistent progression state on retry.
+        badges: s.badges,
+        historicalsOpened: s.historicalsOpened,
+        sandboxModesVisited: s.sandboxModesVisited,
       }
     }),
   dismissTeachingModal: () => set({ activeTeachingModal: null, paused: false }),
   setVignetteMode: (mode, v = null) => set({ mode, vignette: v }),
-  openHistorical: (id) =>
-    set({
-      screen: 'historical',
-      activeHistoricalId: id,
-      historicalSnapshotIdx: 0,
-      historicalPlaybackTimeSec: 0,
-      historicalPaused: true,
-      historicalSpeed: 1,
-      historicalPromptIdx: 0,
-      historicalInstructorView: false,
-    }),
+  openHistorical: (id) => {
+    set((s) => {
+      const opened = new Set(s.historicalsOpened)
+      opened.add(id)
+      return {
+        screen: 'historical',
+        activeHistoricalId: id,
+        historicalSnapshotIdx: 0,
+        historicalPlaybackTimeSec: 0,
+        historicalPaused: true,
+        historicalSpeed: 1,
+        historicalPromptIdx: 0,
+        historicalInstructorView: false,
+        historicalsOpened: opened,
+      }
+    })
+    // Defer to next tick so the badge toast appears after the screen flip.
+    queueMicrotask(() => {
+      const st = useGame.getState()
+      // Historian: 5 historical vignettes total.
+      if (st.historicalsOpened.size >= 5) st.unlockBadge('historian')
+    })
+  },
   closeHistorical: () =>
     set({
       screen: 'menu',
@@ -453,19 +576,132 @@ export const useGame = create<GameStore>()((set) => ({
       plannedManeuverPreview: null,
     })
     queueMicrotask(() => {
-      useGame.getState().pushLog({
+      const st = useGame.getState()
+      st.pushLog({
         t: s.simTimeSec,
         text: `${ship?.name ?? preview.craftId}: maneuver queued (${preview.dvMag.toFixed(
           2,
         )} m/s, ignites in ${Math.round(preview.burnOffsetSec)} s).`,
         tone: 'info',
       })
+      // Discipline badges, evaluated at commit time.
+      if (st.catsAngle?.favorability === 'favorable') st.unlockBadge('sun_at_back')
+      if (st.passiveSafety?.reason === 'safe') st.unlockBadge('passive_safe')
     })
   },
   commitAllPlanned: () => {
     useGame.getState().commitPlannedManeuver()
     useGame.getState().commitPlannedActions()
   },
+  setCatsAngle: (r) => set({ catsAngle: r }),
+  setPassiveSafety: (r) => set({ passiveSafety: r }),
+  setTenToOneShown: (v) => set({ tenToOneShownThisRun: v }),
+  setRpoPhase: (p) => set({ rpoPhase: p }),
+  setLearningSection: (i) =>
+    set((s) => ({
+      learning: { ...s.learning, activeSection: i },
+    })),
+  markLearningSectionDone: (i) => {
+    set((s) => {
+      const next = s.learning.completed.slice()
+      next[i] = true
+      return { learning: { ...s.learning, completed: next } }
+    })
+    queueMicrotask(() => {
+      const st = useGame.getState()
+      // 10 sections total — guard against length growth.
+      const minSections = 10
+      const done = st.learning.completed.filter(Boolean).length
+      if (done >= minSections) st.unlockBadge('learning_complete')
+    })
+  },
+  recordProblemAnswer: (problemId, correct) => {
+    set((s) => {
+      const prior = s.learning.problemAnswers[problemId]
+      const firstTry = !prior && correct
+      return {
+        learning: {
+          ...s.learning,
+          problemAnswers: {
+            ...s.learning.problemAnswers,
+            [problemId]: { correct, firstTry: prior?.firstTry ?? firstTry },
+          },
+        },
+      }
+    })
+    queueMicrotask(() => {
+      const st = useGame.getState()
+      const rec = st.learning.problemAnswers[problemId]
+      if (!rec || !rec.correct || !rec.firstTry) {
+        // Quiz Ace still possible if every quiz question was correct.
+        const quizIds = ['q1_ric', 'q2_cw', 'q3_coes', 'q4_cats', 'q5_passive_safety']
+        if (quizIds.every((qid) => st.learning.problemAnswers[qid]?.correct)) {
+          st.unlockBadge('quiz_ace')
+        }
+        return
+      }
+      if (problemId === 'p1_perch') st.unlockBadge('perch_master')
+      else if (problemId === 'p2_drift') st.unlockBadge('drift_master')
+      else if (problemId === 'p3_nmc') st.unlockBadge('nmc_master')
+      // Quiz: all 5 correct.
+      const quizIds = ['q1_ric', 'q2_cw', 'q3_coes', 'q4_cats', 'q5_passive_safety']
+      if (quizIds.every((qid) => st.learning.problemAnswers[qid]?.correct)) {
+        st.unlockBadge('quiz_ace')
+      }
+    })
+  },
+  unlockBadge: (id) =>
+    set((s) => {
+      if (s.badges.unlocked[id]) return {}
+      const next = { ...s.badges.unlocked, [id]: { id, unlockedAt: Date.now() } }
+      saveBadgeUnlocks(next)
+      return {
+        badges: {
+          unlocked: next,
+          toastQueue: [...s.badges.toastQueue, id],
+        },
+      }
+    }),
+  dismissBadgeToast: (id) =>
+    set((s) => ({
+      badges: {
+        ...s.badges,
+        toastQueue: s.badges.toastQueue.filter((x) => x !== id),
+      },
+    })),
+  markHistoricalOpened: (id) =>
+    set((s) => {
+      if (s.historicalsOpened.has(id)) return {}
+      const next = new Set(s.historicalsOpened)
+      next.add(id)
+      return { historicalsOpened: next }
+    }),
+  markSandboxModeVisited: (mode) => {
+    set((s) => {
+      if (s.sandboxModesVisited.has(mode)) return {}
+      const next = new Set(s.sandboxModesVisited)
+      next.add(mode)
+      return { sandboxModesVisited: next }
+    })
+    queueMicrotask(() => {
+      const st = useGame.getState()
+      if (st.sandboxModesVisited.size >= 3) st.unlockBadge('sandbox_explorer')
+    })
+  },
+  markTenToOneViolated: () =>
+    set((s) => ({ runTracking: { ...s.runTracking, tenToOneViolatedThisRun: true } })),
+  markCloseInReached: () =>
+    set((s) => ({ runTracking: { ...s.runTracking, reachedCloseInThisRun: true } })),
+  markPlaneMatchingExited: () =>
+    set((s) => ({ runTracking: { ...s.runTracking, exitedPlaneMatchingThisRun: true } })),
+  resetRunTracking: () =>
+    set({
+      runTracking: {
+        tenToOneViolatedThisRun: false,
+        reachedCloseInThisRun: false,
+        exitedPlaneMatchingThisRun: false,
+      },
+    }),
   commitPlannedActions: () => {
     // Lazy import to avoid a state.ts <-> actionRunner.ts cycle.
     void import('./actionRunner').then(({ invokeAction }) => {

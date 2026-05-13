@@ -6,6 +6,7 @@ import { useGame } from '../game/state'
 import { R_EARTH } from '../physics/constants'
 import { periodFromA } from '../physics/orbital-elements'
 import { fmtLifeDelta } from '../game/operational-life'
+import PassiveSafetyChip from './PassiveSafetyChip'
 
 const fmtMinutes = (sec: number): string => {
   if (sec < 60) return `${sec.toFixed(0)} s`
@@ -97,6 +98,7 @@ export default function ManeuverCostPopup() {
           </span>
         </div>
       </div>
+      <PassiveSafetyChip />
     </div>
   )
 }

@@ -92,4 +92,24 @@ export const mission2: Mission = {
   initialGuidance:
     'Drift in from the east at under 0.05 m/s relative. Use small V-bar braking burns. ' +
     'Rapid closures spike attribution.',
+  // v1.4 engagement-consideration overlay (advisory only).
+  // SATCOM antenna boresight points along -R-bar (toward Earth, nadir). The
+  // keep-out cone shown here is the operationally sensitive region where an
+  // approaching inspector would interfere with the target's downlink beam.
+  keepZones: [
+    {
+      id: 'antenna_beam',
+      type: 'keep_out',
+      label: 'Antenna boresight',
+      description:
+        'Entering the target SATCOM antenna boresight cone risks RF interference and reveals your presence.',
+      shape: {
+        kind: 'cone',
+        apexRic: [0, 0, 0],
+        axis: [-1, 0, 0],
+        halfAngleDeg: 10,
+        rangeM: 30_000,
+      },
+    },
+  ],
 }

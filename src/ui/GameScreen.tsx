@@ -17,6 +17,8 @@ import ScalePresetSelector from './ScalePresetSelector'
 import ManeuverCostPopup from './ManeuverCostPopup'
 import ManeuverPlannerPanel from './ManeuverPlannerPanel'
 import PlanCommitBar from './PlanCommitBar'
+import TenToOneRuleModal from './TenToOneRuleModal'
+import ThreePhaseIndicator from './ThreePhaseIndicator'
 import Button from './components/Button'
 
 // 3D scene is lazy-loaded so the three.js bundle is only fetched when needed.
@@ -82,6 +84,7 @@ export default function GameScreen() {
         </div>
       </header>
       <AssetSelector />
+      <ThreePhaseIndicator />
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="relative flex-1">
@@ -139,6 +142,7 @@ export default function GameScreen() {
         </aside>
       </div>
       <TeachingModal />
+      <TenToOneRuleModal />
     </div>
   )
 }

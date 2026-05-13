@@ -1,10 +1,33 @@
-# PROXIMA — RPO Trainer (v1.3 Astro Edition)
+# PROXIMA — RPO Trainer (v1.4 Curriculum Edition)
 
 Browser-based orbital rendezvous and proximity operations trainer.
 
 - **Orbital Primer** (Mission 0) plus four playable missions spanning LEO
   rendezvous, GEO quiet inspection, contested approach, and a two-asset
   handoff.
+- **Foundational RPO Learning Track** (v1.4): ten short sections covering
+  the history of rendezvous, the three-phase RPO sequence, the RIC frame,
+  the Clohessy-Wiltshire model, the perch / linear-drift / NMC families,
+  engagement considerations, and a five-question self-check quiz. Three
+  worked example problems with ±5% tolerance and a "Show solution" toggle.
+- **Engagement Considerations** (v1.4): the CATS angle (Camera-Target-Sun)
+  is computed live from a simplified Earth ecliptic and surfaced in the
+  Telemetry sidebar and the 3D proximity view. Keep-in / keep-out zones
+  (cylinder / box / cone) render translucently anchored to the target.
+  The 10-to-1 closure-rate rule (Anthony, Astro Corner) fires an advisory
+  modal once per run when violated. A free-drift passive-safety check
+  surfaces on every planned maneuver via the cost popup.
+- **Three-phase RPO indicator** (v1.4): a top-bar widget reads out
+  Plane Matching → Shape and Align → Phasing → Close-In, derived live
+  from the relative orbital geometry. Phase transitions are tied to badge
+  unlocks.
+- **Operator Badges** (v1.4): 18 badges grouped into mission, learning,
+  discipline, and discovery categories. Unlocks persist to `localStorage`
+  and the achievements gallery is reachable from the main menu footer.
+- **Cross-Domain Cues** (v1.4): five small analogy chips that tie each
+  orbital concept (terminal closure, station-keeping, jammer geometry,
+  asset handoff, CATS / sun geometry) to its closest equivalent in
+  another warfighting domain. Hover for the tooltip.
 - Every mission is launchable in **Play** (free-play sandbox) or **Watch**
   (scripted, narrated guided vignette with teaching pauses and inline
   diagrams).
@@ -112,7 +135,9 @@ Five short vignettes for classroom drop-in use. Each is schematic (no physics
 propagation) with hand-authored keyframes, narration, inline citations, and
 three discussion prompts suitable for a 50-minute block.
 
-- **H1 Gemini VII / VI-A** — the first rendezvous (December 1965)
+- **H1 The Gemini 76 Story** — the first rendezvous, in two acts
+  (December 1965). v1.4 restructure aligns the narration with Jack
+  Anthony's "Astro Corner" two-part framing.
 - **H2 Orbital Express** — autonomous capture (2007)
 - **H3 Luch / Olymp** — pattern of life in GEO
 - **H4 SJ-21 and the Beidou Tow** — grapple and reposition (2022)
@@ -182,10 +207,37 @@ src/
 │   └── events.ts     seeded RNG + clock formatter
 ├── missions/         mission data files
 │   ├── types.ts
+│   ├── m0_primer.ts
 │   ├── m1_first_light.ts
 │   ├── m2_quiet_inspector.ts
 │   ├── m3_contested_approach.ts
+│   ├── m4_handoff.ts
 │   └── index.ts
+├── engagement/       v1.4 CATS angle, keep-zones, passive-safety, 10-to-1
+│   ├── cats.ts
+│   ├── keep-zones.ts
+│   ├── passive-safety.ts
+│   ├── ten-to-one.ts
+│   ├── rpo-phase.ts
+│   └── engagement.test.ts (17 tests)
+├── learning/         v1.4 Learning Track content
+│   ├── types.ts
+│   ├── learning-track.ts  (10 sections + 5 quiz questions)
+│   ├── example-problems.ts (3 worked CW problems)
+│   └── reading-list.ts
+├── progression/      v1.4 badge model + localStorage persistence
+│   ├── types.ts
+│   ├── badges.ts          (18 badges)
+│   └── storage.ts
+├── cross-domain/     v1.4 cross-domain cue chips
+│   └── cues.ts
+├── historical/       v1.2 Historical Ops Library vignettes
+│   ├── h1_gemini.ts  (v1.4: two-act Gemini 76 Story restructure)
+│   ├── h2_orbital_express.ts
+│   ├── h3_luch_olymp.ts
+│   ├── h4_sj21_beidou.ts
+│   └── h5_gssap_sj29.ts
+├── sandbox/          v1.3 RPO Trajectory Sandbox
 ├── ui/
 │   ├── App.tsx       screen router
 │   ├── MainMenu.tsx / Brief.tsx / Loadout.tsx / Debrief.tsx
@@ -237,7 +289,7 @@ are pure data; no UI code is needed.
 
 ## Out of scope for v1
 
-3D rendering, TLE import, multiplayer, audio, persistent accounts,
+TLE import, multiplayer, audio, persistent accounts (badges aside),
 J2 / n-body perturbations, cislunar, mission editor, localization.
 
 ## Public sources
@@ -245,6 +297,8 @@ J2 / n-body perturbations, cislunar, mission editor, localization.
 - Vallado, *Fundamentals of Astrodynamics and Applications* (4th ed.)
 - Curtis, *Orbital Mechanics for Engineering Students* (3rd ed.)
 - Clohessy & Wiltshire, *J. Aerospace Sciences*, 1960
+- Jack Anthony, "Astro Corner" series — How to Rendezvous with Another
+  Satellite; The Gemini 76 Story Parts 1 and 2; The 10-to-1 Rule
 - U.S. Space Force, *Space Warfighting: A Framework for Planners*, April 2025
 - Secure World Foundation, CSIS Space Threat Assessment, SpaceNews reporting
   on GSSAP / Luch-Olymp / SJ-21 / Meadowlands
