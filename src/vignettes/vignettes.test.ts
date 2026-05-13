@@ -84,6 +84,9 @@ const buildInitialState = (vignetteId: string): GameStore => {
     setViewMode3D: () => {},
     setScalePreset: () => {},
     setPlannedManeuverPreview: () => {},
+    togglePlannedAction: () => {},
+    clearPlannedActions: () => {},
+    commitPlannedActions: () => {},
   }
   return base
 }

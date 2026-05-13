@@ -154,6 +154,10 @@ export interface GameState {
   viewMode3D: ViewMode3D
   scalePreset: ScalePreset
   plannedManeuverPreview: PlannedManeuverPreview | null
+  // v1.3+ tactical-action planning. Cadets select a set of actions to commit
+  // as a single batch rather than firing each one immediately on click. This
+  // mirrors the maneuver planner's commit/cancel pattern.
+  plannedActions: Set<string>
   // v1.1 Watch mode
   mode: GameMode
   vignette: VignetteScript | null
@@ -267,6 +271,7 @@ export const initialGameState = (): GameState => ({
   viewMode3D: '2d',
   scalePreset: 'regime',
   plannedManeuverPreview: null,
+  plannedActions: new Set<string>(),
 })
 
 // Seed operational-life state from a mission's player loadout.
@@ -313,6 +318,9 @@ export interface GameStore extends GameState {
   setViewMode3D: (m: ViewMode3D) => void
   setScalePreset: (p: ScalePreset) => void
   setPlannedManeuverPreview: (p: PlannedManeuverPreview | null) => void
+  togglePlannedAction: (id: string) => void
+  clearPlannedActions: () => void
+  commitPlannedActions: () => void
 }
 
 const buildMissionInit = (
@@ -415,6 +423,39 @@ export const useGame = create<GameStore>()((set) => ({
   setViewMode3D: (m) => set({ viewMode3D: m }),
   setScalePreset: (p) => set({ scalePreset: p }),
   setPlannedManeuverPreview: (p) => set({ plannedManeuverPreview: p }),
+  togglePlannedAction: (id) =>
+    set((s) => {
+      const next = new Set(s.plannedActions)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return { plannedActions: next }
+    }),
+  clearPlannedActions: () => set({ plannedActions: new Set<string>() }),
+  commitPlannedActions: () => {
+    // Lazy import to avoid a state.ts <-> actionRunner.ts cycle.
+    void import('./actionRunner').then(({ invokeAction }) => {
+      const ids = Array.from(useGame.getState().plannedActions)
+      for (const id of ids) {
+        // Each call reads the latest state through Zustand's set callback so
+        // sequential effects (e.g. emcon + freq_hop) see each other's patches.
+        useGame.setState((state) => {
+          const store = state as GameStore
+          const out = invokeAction(store, id)
+          if (!out) return {}
+          if (out.logText) {
+            queueMicrotask(() =>
+              useGame
+                .getState()
+                .pushLog({ t: store.simTimeSec, text: out.logText, tone: out.tone ?? 'info' }),
+            )
+          }
+          return out.patch
+        })
+      }
+      // Clear the plan after committing.
+      set({ plannedActions: new Set<string>() })
+    })
+  },
 }))
 
 // A small helper to recover a ship's COE from its current state vector.
