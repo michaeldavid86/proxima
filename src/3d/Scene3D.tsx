@@ -14,6 +14,7 @@ import Spacecraft3D from './Spacecraft3D'
 import ManeuverPreview3D from './ManeuverPreview3D'
 import CameraController from './CameraController'
 import RicFrame3D from './RicFrame3D'
+import CpaMarker3D from './CpaMarker3D'
 import { mToUnits } from './units'
 import { colors, assetColor } from '../theme/colors'
 
@@ -91,6 +92,7 @@ export default function Scene3D() {
           />
         ))}
         <ManeuverPreview3D />
+        <CpaMarker3D />
         <RicFrame3D />
         <OrbitControls
           makeDefault

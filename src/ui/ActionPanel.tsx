@@ -74,6 +74,27 @@ const effectPreview = (
   }
 }
 
+// Reusability descriptor — surfaces whether the cadet can fire this action
+// repeatedly across multiple commits, or whether it's a single-use card.
+// Lots of real RPO actions (inspection collect, threat characterization,
+// network probe, defensive maneuver, frequency agility) get used multiple
+// times in a single engagement; this label tells the cadet up front whether
+// they can chain it or whether they need to budget it.
+const reuseLabel = (def: ActionDef): { text: string; tone: 'amber' | 'green' | 'dim' } => {
+  if (def.disabled) return { text: '—', tone: 'dim' }
+  if (def.cost.oncePerMission) return { text: 'Single use this mission', tone: 'amber' }
+  switch (def.duration) {
+    case 'untilCancelled':
+      return { text: 'Toggle on / off any time', tone: 'green' }
+    case 'oneTurn':
+      return { text: 'Repeatable each turn', tone: 'green' }
+    case 'one-shot':
+      return { text: 'Repeatable every commit', tone: 'green' }
+    default:
+      return { text: 'Repeatable every commit', tone: 'green' }
+  }
+}
+
 export default function ActionPanel() {
   const [tab, setTab] = useState<ActionCategory>('orbital')
   const activeEffects = useGame((s) => s.activeEffects)
@@ -156,9 +177,10 @@ export default function ActionPanel() {
               actionsTaken.some((x) => x.actionId === a.id)
             const reason = sourceVignette?.actionReasons?.[a.id]
             const effect = effectPreview(a, active, alreadyUsed)
+            const reuse = reuseLabel(a)
             const fullTitle = reason
-              ? `${a.description}\n\nRecommended: ${reason}\n\nClick to ${planned ? 'unselect' : 'select'} for commit.`
-              : `${a.description}\n\nClick to ${planned ? 'unselect' : 'select'} for commit.`
+              ? `${a.description}\n\nRecommended: ${reason}\n\n${reuse.text}.\nClick to ${planned ? 'unselect' : 'select'} for commit.`
+              : `${a.description}\n\n${reuse.text}.\nClick to ${planned ? 'unselect' : 'select'} for commit.`
 
             // Border/background by state. Order: planned (amber) wins over
             // active (cyan) wins over default. Both can be true (queued to toggle off).
@@ -214,6 +236,20 @@ export default function ActionPanel() {
                 <span className={`mt-1 font-mono text-[10px] leading-tight ${effectToneCls}`}>
                   {effect}
                 </span>
+                {!a.disabled && (
+                  <span
+                    className={`mt-0.5 inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest ${
+                      reuse.tone === 'green'
+                        ? 'text-mc-green'
+                        : reuse.tone === 'amber'
+                          ? 'text-mc-amber'
+                          : 'text-mc-dim'
+                    }`}
+                  >
+                    {reuse.tone === 'green' ? '↻' : reuse.tone === 'amber' ? '★' : '—'}{' '}
+                    {reuse.text}
+                  </span>
+                )}
               </button>
             )
           })}

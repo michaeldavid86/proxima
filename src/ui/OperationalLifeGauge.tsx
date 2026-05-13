@@ -11,6 +11,7 @@ export default function OperationalLifeGauge() {
   const life = useGame((s) => s.operationalLife)
   const simTime = useGame((s) => s.simTimeSec)
   const totalDvUsed = useGame((s) => s.totalDvUsed)
+  const preview = useGame((s) => s.plannedManeuverPreview)
 
   if (life.initialYears === 0) return null
 
@@ -24,6 +25,19 @@ export default function OperationalLifeGauge() {
     simTime - life.lastDeltaAtSec < CHIP_LIFETIME_SEC &&
     simTime - life.lastDeltaAtSec >= 0
 
+  // Projected life if the cadet commits the currently-planned maneuver.
+  // `preview.costYears` already accounts for delta-V cost against the regime
+  // station-keeping rate, so we just subtract.
+  const isPlanning = preview !== null && preview.dvMag > 0 && preview.costYears > 0
+  const projectedYears = isPlanning
+    ? Math.max(0, life.currentYears - preview.costYears)
+    : life.currentYears
+  const projected = fmtLife(projectedYears)
+  const projectedPct =
+    life.initialYears > 0
+      ? Math.max(0, Math.min(1, projectedYears / life.initialYears))
+      : 0
+
   return (
     <div className="relative flex flex-col gap-1 border border-mc-amber/40 bg-mc-amber/5 p-2">
       <div className="flex items-baseline justify-between">
@@ -35,13 +49,36 @@ export default function OperationalLifeGauge() {
           <span className="ml-1 text-[10px] text-mc-dim">{current.unit}</span>
         </span>
       </div>
-      <div className="h-1 w-full overflow-hidden bg-mc-grid">
-        <div className={`h-full ${tone}`} style={{ width: `${Math.max(0, Math.min(1, pct)) * 100}%` }} />
+      <div className="relative h-1 w-full overflow-hidden bg-mc-grid">
+        <div
+          className={`h-full ${tone}`}
+          style={{ width: `${Math.max(0, Math.min(1, pct)) * 100}%` }}
+        />
+        {/* Projected-after-burn marker: a narrow amber band where the bar
+            will end up if the planned burn is committed. */}
+        {isPlanning && (
+          <div
+            className="absolute top-0 h-full border-r-2 border-mc-red bg-mc-red/30"
+            style={{
+              left: `${projectedPct * 100}%`,
+              width: `${Math.max(0, pct - projectedPct) * 100}%`,
+            }}
+            title={`After burn: ${projected.value} ${projected.unit}`}
+          />
+        )}
       </div>
       <div className="font-mono text-[9px] text-mc-dim">
         {Math.max(0, (life.initialYears - life.currentYears) * rate).toFixed(1)} m/s spent ·{' '}
         {life.regime} SK @ {rate} m/s/yr
       </div>
+      {isPlanning && (
+        <div className="font-mono text-[10px] text-mc-amber">
+          after burn → {projected.value} {projected.unit}
+          <span className="ml-2 text-mc-red">
+            ({fmtLifeDelta(-preview.costYears)})
+          </span>
+        </div>
+      )}
       {showChip && life.lastDeltaYears < 0 && (
         <div className="pointer-events-none absolute -right-1 -top-3 border border-mc-red/60 bg-panel-fill px-1 py-0.5 font-mono text-[10px] text-mc-red shadow-glow">
           {fmtLifeDelta(life.lastDeltaYears)}

@@ -15,7 +15,12 @@ export default function Button({
 }: Props) {
   const v =
     variant === 'warn' ? 'btn btn-warn' : variant === 'danger' ? 'btn btn-danger' : 'btn'
-  const act = active ? 'bg-mc-cyan/20 ring-1 ring-mc-cyan' : ''
+  // The active state must be unmistakable when used in segmented toggles (Map/Prox,
+  // time-warp, scale preset, etc.). We use a saturated background + a glow ring +
+  // a bold text-shadow so the selected option reads as obviously "on" at a glance.
+  const act = active
+    ? 'bg-mc-cyan/40 ring-2 ring-mc-cyan ring-offset-1 ring-offset-panel-fill text-mc-cyan shadow-glow'
+    : ''
   return (
     <button className={`${v} ${act} ${className}`} {...rest}>
       {children}

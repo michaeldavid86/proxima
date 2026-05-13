@@ -15,6 +15,7 @@ import AssetSelector from './AssetSelector'
 import ViewModeToggle from './ViewModeToggle'
 import ScalePresetSelector from './ScalePresetSelector'
 import ManeuverCostPopup from './ManeuverCostPopup'
+import ManeuverPlannerPanel from './ManeuverPlannerPanel'
 import PlanCommitBar from './PlanCommitBar'
 import Button from './components/Button'
 
@@ -91,6 +92,13 @@ export default function GameScreen() {
             <div className="pointer-events-none absolute left-3 bottom-3 z-20 max-w-[300px]">
               <ManeuverCostPopup />
             </div>
+            {/* Maneuver planner overlay — shown in 3D mode (MapView and ProxView
+                have their own inline planners with view-specific affordances). */}
+            {is3D && !isWatch && (
+              <div className="pointer-events-none absolute right-3 bottom-3 z-20">
+                <ManeuverPlannerPanel />
+              </div>
+            )}
             {is3D ? (
               <Suspense
                 fallback={
