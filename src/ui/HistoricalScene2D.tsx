@@ -239,17 +239,18 @@ export default function HistoricalScene2D({ vignette, snapshotIdx, playbackT }: 
       ctx.stroke()
     }
 
-    // Earth.
+    // Earth. Semi-transparent fill so a craft dot that visually overlaps the
+    // Earth disk near LEO (orbit altitude is only ~3% of Earth radius) is
+    // still picked out by the eye.
     const earthC = toScreen(0, 0)
     const earthR = R_EARTH * scale
-    // Subtle ocean fill.
-    ctx.fillStyle = '#0b2940'
+    ctx.fillStyle = 'rgba(11, 41, 64, 0.65)'
     ctx.beginPath()
     ctx.arc(earthC.x, earthC.y, earthR, 0, 2 * Math.PI)
     ctx.fill()
-    // Edge ring.
-    ctx.strokeStyle = '#3a607a'
-    ctx.lineWidth = 1.2
+    // Edge ring — bright so Earth's limb reads as a hard boundary.
+    ctx.strokeStyle = '#6fa8cc'
+    ctx.lineWidth = 1.4
     ctx.stroke()
     // Cross-hair through Earth for orientation.
     ctx.strokeStyle = colors.grid
@@ -300,20 +301,39 @@ export default function HistoricalScene2D({ vignette, snapshotIdx, playbackT }: 
       ctx.globalAlpha = 1
     }
 
-    // Craft glyphs (already in anchor-plane coords).
+    // Craft glyphs (already in anchor-plane coords). Drawn as a small filled
+    // dot wrapped in a halo ring so the marker is still pickable when its
+    // position visually overlaps Earth's disk (at LEO altitudes the
+    // satellite-to-Earth-surface gap is a few pixels on screen).
     for (const it of renderData.items) {
       const c = toScreen(it.rNow[0], it.rNow[1])
-      ctx.fillStyle = sideColor(it.side)
+      const col = sideColor(it.side)
+      // Outer halo ring.
+      ctx.strokeStyle = col
+      ctx.globalAlpha = 0.9
+      ctx.lineWidth = 1.4
       ctx.beginPath()
-      ctx.arc(c.x, c.y, 6, 0, 2 * Math.PI)
-      ctx.fill()
-      ctx.strokeStyle = '#000'
-      ctx.lineWidth = 1
+      ctx.arc(c.x, c.y, 9, 0, 2 * Math.PI)
       ctx.stroke()
+      ctx.globalAlpha = 1
+      // Dark inner cutout so the dot is distinguishable from Earth's fill.
+      ctx.fillStyle = '#000'
+      ctx.beginPath()
+      ctx.arc(c.x, c.y, 4.5, 0, 2 * Math.PI)
+      ctx.fill()
+      // Filled body.
+      ctx.fillStyle = col
+      ctx.beginPath()
+      ctx.arc(c.x, c.y, 3.2, 0, 2 * Math.PI)
+      ctx.fill()
       if (it.labelVisible) {
-        ctx.fillStyle = colors.text
+        // Label with a dark backdrop for readability.
         ctx.font = '11px "JetBrains Mono", monospace'
-        ctx.fillText(it.name, c.x + 10, c.y - 8)
+        const w = ctx.measureText(it.name).width
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.65)'
+        ctx.fillRect(c.x + 10, c.y - 18, w + 6, 14)
+        ctx.fillStyle = colors.text
+        ctx.fillText(it.name, c.x + 13, c.y - 8)
       }
     }
 

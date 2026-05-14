@@ -37,14 +37,19 @@ export const h1_gemini: HistoricalVignette = {
   },
   snapshots: [
     // -------- ACT I: SETUP AND LAUNCH --------
+    // Gemini VII is the target, pinned at the anchor reference point in every
+    // snapshot so it reads visually as "the satellite being approached".
+    // Gemini VI-A is the chaser: it starts on a lower, faster catch-up orbit
+    // well behind and below VII, then converges and station-keeps.
     {
       t_sec: 0,
       label: 'Act I · Gemini VII on station',
       camera: 'regime',
+      cameraFocusCraftId: 'g7',
       craft: [
         {
           id: 'g7',
-          name: 'Gemini VII',
+          name: 'Gemini VII (target)',
           side: 'neutral',
           phaseDeg: 0,
           regime: 'LEO',
@@ -65,12 +70,13 @@ export const h1_gemini: HistoricalVignette = {
       t_sec: 18,
       label: 'Act I · Pad abort',
       camera: 'regime',
+      cameraFocusCraftId: 'g7',
       craft: [
         {
           id: 'g7',
-          name: 'Gemini VII',
+          name: 'Gemini VII (target)',
           side: 'neutral',
-          phaseDeg: 30,
+          phaseDeg: 0,
           regime: 'LEO',
           labelVisible: true,
         },
@@ -90,22 +96,22 @@ export const h1_gemini: HistoricalVignette = {
       t_sec: 35,
       label: 'Act I · Ascent and insertion',
       camera: 'regime',
-      cameraFocusCraftId: 'g6',
+      cameraFocusCraftId: 'g7',
       craft: [
         {
           id: 'g7',
-          name: 'Gemini VII',
+          name: 'Gemini VII (target)',
           side: 'neutral',
-          phaseDeg: 60,
+          phaseDeg: 0,
           regime: 'LEO',
           labelVisible: true,
         },
         {
           id: 'g6',
-          name: 'Gemini VI-A',
+          name: 'Gemini VI-A (chaser)',
           side: 'blue',
           // Catch-up orbit: lower (faster) altitude, trailing well behind.
-          coeOverride: { altitudeKm: 160, trueAnomalyDeg: 45 },
+          coeOverride: { altitudeKm: 160, trueAnomalyDeg: -30 },
           regime: 'LEO',
           labelVisible: true,
         },
@@ -126,11 +132,11 @@ export const h1_gemini: HistoricalVignette = {
       t_sec: 60,
       label: 'Act I · Phasing burns',
       camera: 'close',
-      cameraFocusCraftId: 'g6',
+      cameraFocusCraftId: 'g7',
       craft: [
         {
           id: 'g7',
-          name: 'Gemini VII',
+          name: 'Gemini VII (target)',
           side: 'neutral',
           phaseDeg: 0,
           regime: 'LEO',
@@ -138,9 +144,9 @@ export const h1_gemini: HistoricalVignette = {
         },
         {
           id: 'g6',
-          name: 'Gemini VI-A',
+          name: 'Gemini VI-A (chaser)',
           side: 'blue',
-          coeOverride: { altitudeKm: 210, trueAnomalyDeg: -3.5 },
+          coeOverride: { altitudeKm: 210, trueAnomalyDeg: -8 },
           regime: 'LEO',
           labelVisible: true,
         },
@@ -164,7 +170,7 @@ export const h1_gemini: HistoricalVignette = {
       craft: [
         {
           id: 'g7',
-          name: 'Gemini VII',
+          name: 'Gemini VII (target)',
           side: 'neutral',
           ricKm: [0, 0, 0],
           regime: 'LEO',
@@ -172,7 +178,7 @@ export const h1_gemini: HistoricalVignette = {
         },
         {
           id: 'g6',
-          name: 'Gemini VI-A',
+          name: 'Gemini VI-A (chaser)',
           side: 'blue',
           ricKm: [0, -5, 0],
           regime: 'LEO',
@@ -198,7 +204,7 @@ export const h1_gemini: HistoricalVignette = {
       craft: [
         {
           id: 'g7',
-          name: 'Gemini VII',
+          name: 'Gemini VII (target)',
           side: 'neutral',
           ricKm: [0, 0, 0],
           regime: 'LEO',
@@ -206,7 +212,7 @@ export const h1_gemini: HistoricalVignette = {
         },
         {
           id: 'g6',
-          name: 'Gemini VI-A',
+          name: 'Gemini VI-A (chaser)',
           side: 'blue',
           ricKm: [0, -0.0003, 0],
           regime: 'LEO',
@@ -233,7 +239,7 @@ export const h1_gemini: HistoricalVignette = {
       craft: [
         {
           id: 'g7',
-          name: 'Gemini VII',
+          name: 'Gemini VII (target)',
           side: 'neutral',
           ricKm: [0, 0, 0],
           regime: 'LEO',
@@ -241,7 +247,7 @@ export const h1_gemini: HistoricalVignette = {
         },
         {
           id: 'g6',
-          name: 'Gemini VI-A',
+          name: 'Gemini VI-A (chaser)',
           side: 'blue',
           ricKm: [40, 80, 0],
           regime: 'LEO',

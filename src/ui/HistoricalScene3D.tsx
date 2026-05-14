@@ -37,10 +37,13 @@ const findCraftIn = (snap: Snapshot | undefined, id: string): CraftSnapshot | un
   snap?.craft.find((c) => c.id === id)
 
 // A simple satellite glyph: a colored body with two flat solar panels, a
-// floating name label, and a halo ring. depthTest is disabled on the entire
-// group so the glyph is always visible even when geometrically behind Earth
-// (the historical scene is schematic, so occlusion would only hide cadets
-// from what they're trying to see).
+// floating name label, and a halo ring. All materials are transparent + draw
+// with depthTest disabled and a very high renderOrder so the glyph always
+// draws on top — including over Earth's atmosphere halo, which is itself
+// transparent (the transparent pass runs after opaque, so the glyph has to
+// share that pass and beat the atmosphere's renderOrder to win).
+const GLYPH_RENDER_ORDER = 1000
+
 function CraftGlyph({
   pos,
   color,
@@ -55,41 +58,47 @@ function CraftGlyph({
   glyphSize: number
 }) {
   return (
-    <group position={pos} renderOrder={20}>
+    <group position={pos}>
       {/* Halo ring — large, always-visible bright marker so the eye can find
           the craft from any camera distance. */}
-      <mesh rotation-x={Math.PI / 2} renderOrder={19}>
+      <mesh rotation-x={Math.PI / 2} renderOrder={GLYPH_RENDER_ORDER}>
         <ringGeometry args={[glyphSize * 1.4, glyphSize * 1.7, 32]} />
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={0.9}
+          opacity={0.95}
           side={THREE.DoubleSide}
           depthTest={false}
           depthWrite={false}
         />
       </mesh>
       {/* Body */}
-      <mesh renderOrder={20}>
+      <mesh renderOrder={GLYPH_RENDER_ORDER + 1}>
         <boxGeometry args={[glyphSize, glyphSize * 0.55, glyphSize * 0.55]} />
-        <meshBasicMaterial color={color} depthTest={false} depthWrite={false} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={1}
+          depthTest={false}
+          depthWrite={false}
+        />
       </mesh>
       {/* Solar panels */}
-      <mesh position={[0, 0, glyphSize * 1.05]} renderOrder={20}>
+      <mesh position={[0, 0, glyphSize * 1.05]} renderOrder={GLYPH_RENDER_ORDER + 1}>
         <boxGeometry args={[glyphSize * 0.6, glyphSize * 0.06, glyphSize * 1.4]} />
         <meshBasicMaterial
           color={color}
-          opacity={0.8}
+          opacity={0.85}
           transparent
           depthTest={false}
           depthWrite={false}
         />
       </mesh>
-      <mesh position={[0, 0, -glyphSize * 1.05]} renderOrder={20}>
+      <mesh position={[0, 0, -glyphSize * 1.05]} renderOrder={GLYPH_RENDER_ORDER + 1}>
         <boxGeometry args={[glyphSize * 0.6, glyphSize * 0.06, glyphSize * 1.4]} />
         <meshBasicMaterial
           color={color}
-          opacity={0.8}
+          opacity={0.85}
           transparent
           depthTest={false}
           depthWrite={false}
