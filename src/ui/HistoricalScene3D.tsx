@@ -42,6 +42,10 @@ const findCraftIn = (snap: Snapshot | undefined, id: string): CraftSnapshot | un
 // draws on top — including over Earth's atmosphere halo, which is itself
 // transparent (the transparent pass runs after opaque, so the glyph has to
 // share that pass and beat the atmosphere's renderOrder to win).
+//
+// Glyph SIZE is auto-scaled per frame based on camera distance so the
+// marker stays visually consistent (~2% of view radius) at any zoom level:
+// not invisible at regime framing, not overwhelming during a 5 m capture.
 const GLYPH_RENDER_ORDER = 1000
 
 function CraftGlyph({
@@ -49,20 +53,30 @@ function CraftGlyph({
   color,
   name,
   showLabel,
-  glyphSize,
 }: {
   pos: [number, number, number]
   color: string
   name: string
   showLabel: boolean
-  glyphSize: number
 }) {
+  const groupRef = useRef<THREE.Group>(null)
+  const { camera } = useThree()
+  const posVec = useMemo(() => new THREE.Vector3(...pos), [pos])
+
+  useFrame(() => {
+    if (!groupRef.current) return
+    const dist = camera.position.distanceTo(posVec)
+    // ~2% of camera distance for a consistent screen-space marker size.
+    const s = dist * 0.022
+    groupRef.current.scale.setScalar(s)
+  })
+
+  // Use unit-sized geometry; the group scale applies per frame.
   return (
-    <group position={pos}>
-      {/* Halo ring — large, always-visible bright marker so the eye can find
-          the craft from any camera distance. */}
+    <group ref={groupRef} position={pos}>
+      {/* Halo ring */}
       <mesh rotation-x={Math.PI / 2} renderOrder={GLYPH_RENDER_ORDER}>
-        <ringGeometry args={[glyphSize * 1.4, glyphSize * 1.7, 32]} />
+        <ringGeometry args={[1.4, 1.7, 32]} />
         <meshBasicMaterial
           color={color}
           transparent
@@ -74,7 +88,7 @@ function CraftGlyph({
       </mesh>
       {/* Body */}
       <mesh renderOrder={GLYPH_RENDER_ORDER + 1}>
-        <boxGeometry args={[glyphSize, glyphSize * 0.55, glyphSize * 0.55]} />
+        <boxGeometry args={[1, 0.55, 0.55]} />
         <meshBasicMaterial
           color={color}
           transparent
@@ -84,8 +98,8 @@ function CraftGlyph({
         />
       </mesh>
       {/* Solar panels */}
-      <mesh position={[0, 0, glyphSize * 1.05]} renderOrder={GLYPH_RENDER_ORDER + 1}>
-        <boxGeometry args={[glyphSize * 0.6, glyphSize * 0.06, glyphSize * 1.4]} />
+      <mesh position={[0, 0, 1.05]} renderOrder={GLYPH_RENDER_ORDER + 1}>
+        <boxGeometry args={[0.6, 0.06, 1.4]} />
         <meshBasicMaterial
           color={color}
           opacity={0.85}
@@ -94,8 +108,8 @@ function CraftGlyph({
           depthWrite={false}
         />
       </mesh>
-      <mesh position={[0, 0, -glyphSize * 1.05]} renderOrder={GLYPH_RENDER_ORDER + 1}>
-        <boxGeometry args={[glyphSize * 0.6, glyphSize * 0.06, glyphSize * 1.4]} />
+      <mesh position={[0, 0, -1.05]} renderOrder={GLYPH_RENDER_ORDER + 1}>
+        <boxGeometry args={[0.6, 0.06, 1.4]} />
         <meshBasicMaterial
           color={color}
           opacity={0.85}
@@ -106,7 +120,7 @@ function CraftGlyph({
       </mesh>
       {showLabel && (
         <Html
-          position={[0, glyphSize * 2.5, 0]}
+          position={[0, 2.5, 0]}
           center
           zIndexRange={[100, 0]}
           style={{ pointerEvents: 'none' }}
@@ -152,6 +166,8 @@ function MotionTrail({
 // framing when the snapshot changes, then yields to OrbitControls so the
 // cadet can freely rotate / zoom / pan to look at the geometry. The animation
 // runs for a short window (~800 ms) after each snapshot change and stops.
+// For 'close' / 'proximity', distance is computed from the craft bounding
+// box so RPO action at meter-to-km scales remains visible.
 const AUTO_FRAME_DURATION_MS = 800
 
 function HistoricalCamera({
@@ -185,10 +201,32 @@ function HistoricalCamera({
 
     const camPreset = cur.camera ?? (snapshotIdx === 0 ? 'regime' : 'close')
     const anchorAU = mToUnits(R_EARTH + vignette.anchorOrbit.altitudeKm * 1000)
-    const earthU = mToUnits(R_EARTH)
     let distance = anchorAU * 2.5
-    if (camPreset === 'close') distance = Math.max(anchorAU * 0.35, earthU * 1.2)
-    else if (camPreset === 'proximity') distance = earthU * 0.15
+
+    if (camPreset === 'close' || camPreset === 'proximity') {
+      // Find the largest separation from focus to any other craft in the
+      // snapshot (in meters, ECI). Convert to Three.js units.
+      let maxOffsetM = 0
+      for (const c of cur.craft) {
+        if (c.id === focusCraft.id) continue
+        const r = resolveCraft(c, vignette.anchorOrbit)
+        const dx = r.rEci[0] - resolved.rEci[0]
+        const dy = r.rEci[1] - resolved.rEci[1]
+        const dz = r.rEci[2] - resolved.rEci[2]
+        maxOffsetM = Math.max(maxOffsetM, Math.hypot(dx, dy, dz))
+      }
+      const bboxUnits = mToUnits(maxOffsetM)
+      if (camPreset === 'proximity') {
+        // Tight frame; floor of 200 m so sub-meter offsets still render.
+        distance = Math.max(bboxUnits * 2.5, mToUnits(200))
+      } else {
+        // 'close'. Defaults to a sensible near-focus zoom when alone.
+        distance =
+          maxOffsetM === 0
+            ? anchorAU * 0.05
+            : Math.max(bboxUnits * 3, mToUnits(5000))
+      }
+    }
 
     // Offset around focus along a stable bearing that varies per snapshot
     // so a static hold reads as a new view, not a frozen frame.
@@ -301,13 +339,6 @@ export default function HistoricalScene3D({ vignette, snapshotIdx, playbackT, re
     return { items, orbits: Array.from(orbitsByKey.values()) }
   }, [vignette, cur, nxt, tFrac, snapshotIdx])
 
-  // Glyph size scales with the regime: GEO orbits are big, so glyphs must
-  // be bigger to be visible from a regime-framed camera.
-  const glyphUnits = useMemo(() => {
-    const aUnits = mToUnits(R_EARTH + vignette.anchorOrbit.altitudeKm * 1000)
-    return Math.max(0.012, aUnits * 0.022)
-  }, [vignette])
-
   return (
     <Canvas
       camera={{ position: [3, 1.5, 3], near: 0.01, far: 1000, fov: 45 }}
@@ -345,7 +376,6 @@ export default function HistoricalScene3D({ vignette, snapshotIdx, playbackT, re
               color={color}
               name={it.name}
               showLabel={it.labelVisible}
-              glyphSize={glyphUnits}
             />
           </group>
         )

@@ -61,8 +61,8 @@ export const h3_luch_olymp: HistoricalVignette = {
     {
       t_sec: 50,
       label: 'Drift to next target',
-      camera: 'regime',
-      cameraFocusCraftId: 'luch',
+      camera: 'close',
+      cameraFocusCraftId: 'sat3',
       craft: [
         { id: 'luch', name: 'Luch', side: 'red', phaseDeg: 75, regime: 'GEO', labelVisible: true },
         { id: 'sat3', name: 'Athena-Fidus (FR/IT mil)', side: 'neutral', phaseDeg: 77, regime: 'GEO', labelVisible: true },

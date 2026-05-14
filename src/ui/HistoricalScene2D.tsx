@@ -84,7 +84,10 @@ export default function HistoricalScene2D({ vignette, snapshotIdx, playbackT }: 
   )
 
   // Auto-frame whenever the snapshot changes — but only if the user hasn't
-  // touched the camera since the previous frame.
+  // touched the camera since the previous frame. For 'close' and 'proximity'
+  // the half-span is computed from the actual craft bounding box so RPO
+  // action at meter-to-km scales is visible (otherwise satellites collapse
+  // into one invisible pixel at orbit-scale framing).
   useEffect(() => {
     userMovedRef.current = false
     const snap = vignette.snapshots[snapshotIdx]
@@ -96,27 +99,44 @@ export default function HistoricalScene2D({ vignette, snapshotIdx, playbackT }: 
 
     const cam = snap.camera ?? (snapshotIdx === 0 ? 'regime' : 'close')
     const anchorAm = R_EARTH + vignette.anchorOrbit.altitudeKm * 1000
+    const regimeHalfSpan = anchorAm * 1.4
+
     let halfSpanM: number
     let center: { x: number; y: number }
 
     if (cam === 'regime') {
-      // Frame Earth + the anchor orbit comfortably.
-      halfSpanM = anchorAm * 1.4
+      halfSpanM = regimeHalfSpan
       center = { x: 0, y: 0 }
     } else {
       const f = resolveCraft(focusCraft, vignette.anchorOrbit)
-      // Pan target is in anchor-plane coordinates so it matches the rendered
-      // craft position.
       const fRot = rotateToPlane(f.rEci as Vec3, anchorRaan, anchorInc)
       center = { x: fRot[0], y: fRot[1] }
-      if (cam === 'close') halfSpanM = anchorAm * 0.18
-      else halfSpanM = R_EARTH * 0.06 // proximity: very tight
+
+      // Max separation from focus across all craft in this snapshot
+      // (projected into anchor-plane coords).
+      let maxOffsetM = 0
+      for (const c of snap.craft) {
+        if (c.id === focusCraft.id) continue
+        const r = resolveCraft(c, vignette.anchorOrbit)
+        const rRot = rotateToPlane(r.rEci as Vec3, anchorRaan, anchorInc)
+        const dx = rRot[0] - fRot[0]
+        const dy = rRot[1] - fRot[1]
+        maxOffsetM = Math.max(maxOffsetM, Math.hypot(dx, dy))
+      }
+
+      if (cam === 'proximity') {
+        // Tight frame for grapple / station-keeping / capture moments.
+        // 200 m floor so sub-meter offsets still produce a visible scene.
+        halfSpanM = Math.max(maxOffsetM * 2, 200)
+      } else {
+        // 'close' — frame the action with breathing room. Default to a
+        // sensible "near focus" zoom when there's only one craft.
+        if (maxOffsetM === 0) halfSpanM = anchorAm * 0.05
+        else halfSpanM = Math.max(maxOffsetM * 2.5, 5000)
+      }
     }
 
-    // The renderer treats zoom=1 as "fit the regime view" — i.e. pixel scale
-    // = (W/2 - margin) / halfSpanM_regime. We store the desired pan in meters
-    // and a zoom multiplier that scales halfSpanM relative to the regime.
-    const regimeHalfSpan = anchorAm * 1.4
+    // The renderer treats zoom=1 as "fit the regime view".
     setZoom(regimeHalfSpan / halfSpanM)
     setPan({ x: center.x, y: center.y })
   }, [vignette, snapshotIdx, anchorRaan, anchorInc])
