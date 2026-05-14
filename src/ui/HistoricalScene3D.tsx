@@ -36,8 +36,11 @@ const sideColor = (s: CraftSnapshot['side']) =>
 const findCraftIn = (snap: Snapshot | undefined, id: string): CraftSnapshot | undefined =>
   snap?.craft.find((c) => c.id === id)
 
-// A simple satellite glyph: a colored body with two flat solar panels and a
-// floating name label.
+// A simple satellite glyph: a colored body with two flat solar panels, a
+// floating name label, and a halo ring. depthTest is disabled on the entire
+// group so the glyph is always visible even when geometrically behind Earth
+// (the historical scene is schematic, so occlusion would only hide cadets
+// from what they're trying to see).
 function CraftGlyph({
   pos,
   color,
@@ -52,24 +55,51 @@ function CraftGlyph({
   glyphSize: number
 }) {
   return (
-    <group position={pos}>
-      <mesh>
+    <group position={pos} renderOrder={20}>
+      {/* Halo ring — large, always-visible bright marker so the eye can find
+          the craft from any camera distance. */}
+      <mesh rotation-x={Math.PI / 2} renderOrder={19}>
+        <ringGeometry args={[glyphSize * 1.4, glyphSize * 1.7, 32]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={0.9}
+          side={THREE.DoubleSide}
+          depthTest={false}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* Body */}
+      <mesh renderOrder={20}>
         <boxGeometry args={[glyphSize, glyphSize * 0.55, glyphSize * 0.55]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
+        <meshBasicMaterial color={color} depthTest={false} depthWrite={false} />
       </mesh>
-      <mesh position={[0, 0, glyphSize * 1.05]}>
+      {/* Solar panels */}
+      <mesh position={[0, 0, glyphSize * 1.05]} renderOrder={20}>
         <boxGeometry args={[glyphSize * 0.6, glyphSize * 0.06, glyphSize * 1.4]} />
-        <meshStandardMaterial color={color} opacity={0.55} transparent />
+        <meshBasicMaterial
+          color={color}
+          opacity={0.8}
+          transparent
+          depthTest={false}
+          depthWrite={false}
+        />
       </mesh>
-      <mesh position={[0, 0, -glyphSize * 1.05]}>
+      <mesh position={[0, 0, -glyphSize * 1.05]} renderOrder={20}>
         <boxGeometry args={[glyphSize * 0.6, glyphSize * 0.06, glyphSize * 1.4]} />
-        <meshStandardMaterial color={color} opacity={0.55} transparent />
+        <meshBasicMaterial
+          color={color}
+          opacity={0.8}
+          transparent
+          depthTest={false}
+          depthWrite={false}
+        />
       </mesh>
       {showLabel && (
         <Html
           position={[0, glyphSize * 2.5, 0]}
           center
-          zIndexRange={[1, 1]}
+          zIndexRange={[100, 0]}
           style={{ pointerEvents: 'none' }}
         >
           <div

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { HistoricalVignette, CraftSnapshot, Snapshot } from '../historical/types'
 import { resolveCraft, anchorToCoe, lerpVec3 } from '../historical/positions'
 import { coeToState, type COE } from '../physics/orbital-elements'
+import type { Vec3 } from '../physics/vec'
 import { R_EARTH } from '../physics/constants'
 import { colors } from '../theme/colors'
 
@@ -26,14 +27,38 @@ const ORBIT_SAMPLES = 128
 const coeKey = (c: COE): string =>
   [c.a, c.e, c.i, c.raan, c.argp].map((x) => x.toFixed(4)).join('|')
 
-// Sample an orbit at ORBIT_SAMPLES true-anomaly steps. Returns ECI x,y pairs
-// for 2D projection (we project to the x-y plane, looking down from +z).
-const sampleOrbitXY = (coe: COE): { x: number; y: number }[] => {
+// Rotate an ECI vector by -RAAN around z, then -inclination around x, so the
+// chosen orbital plane lies in the resulting x-y plane. After this rotation,
+// the anchor orbit projects to a true ellipse (or circle) in screen space —
+// inclined orbits no longer appear to crash through Earth as foreshortened
+// projections.
+const rotateToPlane = (p: Vec3, raan: number, inclination: number): Vec3 => {
+  const cR = Math.cos(raan)
+  const sR = Math.sin(raan)
+  const x1 = p[0] * cR + p[1] * sR
+  const y1 = -p[0] * sR + p[1] * cR
+  const z1 = p[2]
+  const cI = Math.cos(inclination)
+  const sI = Math.sin(inclination)
+  const x2 = x1
+  const y2 = y1 * cI + z1 * sI
+  const z2 = -y1 * sI + z1 * cI
+  return [x2, y2, z2]
+}
+
+// Sample an orbit at ORBIT_SAMPLES true-anomaly steps, then rotate each sample
+// into the anchor plane for 2D projection.
+const sampleOrbitXY = (
+  coe: COE,
+  anchorRaan: number,
+  anchorInc: number,
+): { x: number; y: number }[] => {
   const out: { x: number; y: number }[] = []
   for (let i = 0; i <= ORBIT_SAMPLES; i++) {
     const nu = (i / ORBIT_SAMPLES) * 2 * Math.PI
     const sv = coeToState({ ...coe, nu })
-    out.push({ x: sv.r[0], y: sv.r[1] })
+    const r = rotateToPlane(sv.r as Vec3, anchorRaan, anchorInc)
+    out.push({ x: r[0], y: r[1] })
   }
   return out
 }
@@ -47,6 +72,16 @@ export default function HistoricalScene2D({ vignette, snapshotIdx, playbackT }: 
   // Track whether the user has manually moved the view since the last
   // snapshot change. If they have, we don't re-auto-frame.
   const userMovedRef = useRef(false)
+
+  // Anchor plane rotation parameters reused throughout this render.
+  const anchorRaan = useMemo(
+    () => (vignette.anchorOrbit.raanDeg ?? 0) * (Math.PI / 180),
+    [vignette],
+  )
+  const anchorInc = useMemo(
+    () => vignette.anchorOrbit.inclinationDeg * (Math.PI / 180),
+    [vignette],
+  )
 
   // Auto-frame whenever the snapshot changes — but only if the user hasn't
   // touched the camera since the previous frame.
@@ -70,7 +105,10 @@ export default function HistoricalScene2D({ vignette, snapshotIdx, playbackT }: 
       center = { x: 0, y: 0 }
     } else {
       const f = resolveCraft(focusCraft, vignette.anchorOrbit)
-      center = { x: f.rEci[0], y: f.rEci[1] }
+      // Pan target is in anchor-plane coordinates so it matches the rendered
+      // craft position.
+      const fRot = rotateToPlane(f.rEci as Vec3, anchorRaan, anchorInc)
+      center = { x: fRot[0], y: fRot[1] }
       if (cam === 'close') halfSpanM = anchorAm * 0.18
       else halfSpanM = R_EARTH * 0.06 // proximity: very tight
     }
@@ -81,7 +119,7 @@ export default function HistoricalScene2D({ vignette, snapshotIdx, playbackT }: 
     const regimeHalfSpan = anchorAm * 1.4
     setZoom(regimeHalfSpan / halfSpanM)
     setPan({ x: center.x, y: center.y })
-  }, [vignette, snapshotIdx])
+  }, [vignette, snapshotIdx, anchorRaan, anchorInc])
 
   // Resolve positions + orbits for the current frame.
   const renderData = useMemo(() => {
@@ -118,7 +156,11 @@ export default function HistoricalScene2D({ vignette, snapshotIdx, playbackT }: 
             return f ? resolveCraft(f, vignette.anchorOrbit) : null
           })()
         : null
-      const rNow = lerpVec3(resCur.rEci, resNxt.rEci, tFrac)
+      const rNowEci = lerpVec3(resCur.rEci, resNxt.rEci, tFrac)
+      const rNow = rotateToPlane(rNowEci, anchorRaan, anchorInc)
+      const rPrev = resPrev
+        ? rotateToPlane(resPrev.rEci as Vec3, anchorRaan, anchorInc)
+        : null
       const k = coeKey(resCur.coe)
       if (!orbits.has(k)) orbits.set(k, { coe: resCur.coe, isAnchor: false, sample: c })
       return {
@@ -127,12 +169,12 @@ export default function HistoricalScene2D({ vignette, snapshotIdx, playbackT }: 
         side: c.side,
         labelVisible: c.labelVisible,
         rNow,
-        rPrev: resPrev?.rEci ?? null,
+        rPrev,
       }
     })
 
     return { items, orbits: Array.from(orbits.values()) }
-  }, [vignette, snapshotIdx, playbackT])
+  }, [vignette, snapshotIdx, playbackT, anchorRaan, anchorInc])
 
   // Canvas redraw.
   useEffect(() => {
@@ -221,7 +263,7 @@ export default function HistoricalScene2D({ vignette, snapshotIdx, playbackT }: 
 
     // Orbits.
     for (const o of renderData.orbits) {
-      const pts = sampleOrbitXY(o.coe)
+      const pts = sampleOrbitXY(o.coe, anchorRaan, anchorInc)
       ctx.beginPath()
       let moved = false
       for (const p of pts) {
@@ -242,7 +284,7 @@ export default function HistoricalScene2D({ vignette, snapshotIdx, playbackT }: 
       ctx.globalAlpha = 1
     }
 
-    // Motion trails.
+    // Motion trails (already in anchor-plane coords).
     for (const it of renderData.items) {
       if (!it.rPrev) continue
       const from = toScreen(it.rPrev[0], it.rPrev[1])
@@ -258,7 +300,7 @@ export default function HistoricalScene2D({ vignette, snapshotIdx, playbackT }: 
       ctx.globalAlpha = 1
     }
 
-    // Craft glyphs.
+    // Craft glyphs (already in anchor-plane coords).
     for (const it of renderData.items) {
       const c = toScreen(it.rNow[0], it.rNow[1])
       ctx.fillStyle = sideColor(it.side)

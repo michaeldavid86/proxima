@@ -114,24 +114,6 @@ export const buildEarthCanvas = (): HTMLCanvasElement => {
   ctx.fillStyle = polar
   ctx.fillRect(0, 0, EQ_W, EQ_H)
 
-  // Cloud wisps — biased to mid-latitudes, organic shapes.
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.10)'
-  for (let i = 0; i < 80; i++) {
-    const cx = Math.random() * EQ_W
-    const lat = (Math.random() - 0.5) * 120 // wider distribution
-    const cy = ((90 - lat) / 180) * EQ_H
-    const rx = 25 + Math.random() * 100
-    const ry = 5 + Math.random() * 10
-    const rot = Math.random() * 0.4 - 0.2
-    ctx.save()
-    ctx.translate(cx, cy)
-    ctx.rotate(rot)
-    ctx.beginPath()
-    ctx.ellipse(0, 0, rx, ry, 0, 0, 2 * Math.PI)
-    ctx.fill()
-    ctx.restore()
-  }
-
   cachedEq = canvas
   return canvas
 }
