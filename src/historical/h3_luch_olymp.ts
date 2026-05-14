@@ -1,3 +1,6 @@
+// Luch/Olymp historical vignette. v1.5 3D model: GEO anchor orbit. Luch
+// drifts in longitude as phaseDeg along the GEO ring, holding station near
+// successive targets which are placed at their own phaseDeg around the belt.
 import type { HistoricalVignette } from './types'
 
 export const h3_luch_olymp: HistoricalVignette = {
@@ -8,6 +11,12 @@ export const h3_luch_olymp: HistoricalVignette = {
   regime: 'GEO',
   estimatedRuntimeSec: 170,
   thumbnail: '👁️',
+  anchorOrbit: {
+    altitudeKm: 35786, // GEO
+    inclinationDeg: 0.05,
+    raanDeg: 0,
+    eccentricity: 0,
+  },
   intro: {
     title: 'An inspector at work',
     body:
@@ -18,8 +27,10 @@ export const h3_luch_olymp: HistoricalVignette = {
     {
       t_sec: 0,
       label: 'On orbit',
+      camera: 'regime',
+      cameraFocusCraftId: 'luch',
       craft: [
-        { id: 'luch', name: 'Luch', side: 'red', x_km: 0, y_km: 0, regime: 'GEO', labelVisible: true },
+        { id: 'luch', name: 'Luch', side: 'red', phaseDeg: 0, regime: 'GEO', labelVisible: true },
       ],
       narration: {
         title: 'Quiet start',
@@ -31,10 +42,12 @@ export const h3_luch_olymp: HistoricalVignette = {
     {
       t_sec: 20,
       label: 'First close approach',
+      camera: 'close',
+      cameraFocusCraftId: 'sat1',
       craft: [
-        { id: 'luch', name: 'Luch', side: 'red', x_km: -10, y_km: 0, regime: 'GEO', labelVisible: true },
-        { id: 'sat1', name: 'Intelsat 7', side: 'neutral', x_km: 0, y_km: 0, regime: 'GEO', labelVisible: true },
-        { id: 'sat2', name: 'Intelsat 901', side: 'neutral', x_km: 0.5, y_km: 5, regime: 'GEO', labelVisible: false },
+        { id: 'sat1', name: 'Intelsat 7', side: 'neutral', phaseDeg: 30, regime: 'GEO', labelVisible: true },
+        { id: 'sat2', name: 'Intelsat 901', side: 'neutral', phaseDeg: 31.5, regime: 'GEO', labelVisible: false },
+        { id: 'luch', name: 'Luch', side: 'red', phaseDeg: 30.75, regime: 'GEO', labelVisible: true },
       ],
       narration: {
         title: 'Between two commercial SATCOMs',
@@ -48,9 +61,11 @@ export const h3_luch_olymp: HistoricalVignette = {
     {
       t_sec: 50,
       label: 'Drift to next target',
+      camera: 'regime',
+      cameraFocusCraftId: 'luch',
       craft: [
-        { id: 'luch', name: 'Luch', side: 'red', x_km: 80, y_km: -30, regime: 'GEO', labelVisible: true },
-        { id: 'sat3', name: 'French Athena-Fidus', side: 'neutral', x_km: 90, y_km: -30, regime: 'GEO', labelVisible: true },
+        { id: 'luch', name: 'Luch', side: 'red', phaseDeg: 75, regime: 'GEO', labelVisible: true },
+        { id: 'sat3', name: 'Athena-Fidus (FR/IT mil)', side: 'neutral', phaseDeg: 77, regime: 'GEO', labelVisible: true },
       ],
       narration: {
         title: 'Shadowing a military SATCOM',
@@ -62,9 +77,11 @@ export const h3_luch_olymp: HistoricalVignette = {
     {
       t_sec: 80,
       label: 'Continuing cycle',
+      camera: 'close',
+      cameraFocusCraftId: 'luch',
       craft: [
-        { id: 'luch', name: 'Luch', side: 'red', x_km: -40, y_km: 60, regime: 'GEO', labelVisible: true },
-        { id: 'sat4', name: 'target n', side: 'neutral', x_km: -40, y_km: 65, regime: 'GEO', labelVisible: false },
+        { id: 'luch', name: 'Luch', side: 'red', phaseDeg: 130, regime: 'GEO', labelVisible: true },
+        { id: 'sat4', name: 'target n', side: 'neutral', phaseDeg: 131, regime: 'GEO', labelVisible: false },
       ],
       narration: {
         title: 'Pattern, not incident',
@@ -77,8 +94,10 @@ export const h3_luch_olymp: HistoricalVignette = {
     {
       t_sec: 110,
       label: 'Signals and ambiguity',
+      camera: 'regime',
+      cameraFocusCraftId: 'luch',
       craft: [
-        { id: 'luch', name: 'Luch', side: 'red', x_km: 0, y_km: 0, regime: 'GEO', labelVisible: true },
+        { id: 'luch', name: 'Luch', side: 'red', phaseDeg: 200, regime: 'GEO', labelVisible: true },
       ],
       narration: {
         title: 'What we can and cannot observe',
@@ -91,11 +110,14 @@ export const h3_luch_olymp: HistoricalVignette = {
     {
       t_sec: 140,
       label: 'Aggregate picture',
+      camera: 'regime',
+      cameraFocusCraftId: 'luch',
       craft: [
-        { id: 'luch', name: 'Luch', side: 'red', x_km: 10, y_km: -10, regime: 'GEO', labelVisible: true },
-        { id: 't1', name: 'target', side: 'neutral', x_km: -40, y_km: 20, regime: 'GEO', labelVisible: false },
-        { id: 't2', name: 'target', side: 'neutral', x_km: 50, y_km: 30, regime: 'GEO', labelVisible: false },
-        { id: 't3', name: 'target', side: 'neutral', x_km: -20, y_km: -40, regime: 'GEO', labelVisible: false },
+        { id: 'luch', name: 'Luch', side: 'red', phaseDeg: 260, regime: 'GEO', labelVisible: true },
+        { id: 't1', name: 'target', side: 'neutral', phaseDeg: 30, regime: 'GEO', labelVisible: false },
+        { id: 't2', name: 'target', side: 'neutral', phaseDeg: 130, regime: 'GEO', labelVisible: false },
+        { id: 't3', name: 'target', side: 'neutral', phaseDeg: 220, regime: 'GEO', labelVisible: false },
+        { id: 't4', name: 'target', side: 'neutral', phaseDeg: 320, regime: 'GEO', labelVisible: false },
       ],
       narration: {
         title: 'A decade of data',

@@ -1,3 +1,7 @@
+// GSSAP / SJ-29 historical vignette. v1.5 3D model: GEO anchor with the
+// Chinese pair anchored at the origin and the two GSSAP observers as RIC
+// offsets in km. The four-spacecraft bracket geometry is preserved as
+// in-track ± offsets on the same GEO ring.
 import type { HistoricalVignette } from './types'
 
 export const h5_gssap_sj29: HistoricalVignette = {
@@ -8,6 +12,12 @@ export const h5_gssap_sj29: HistoricalVignette = {
   regime: 'GEO',
   estimatedRuntimeSec: 165,
   thumbnail: '⌘',
+  anchorOrbit: {
+    altitudeKm: 35786,
+    inclinationDeg: 0.05,
+    raanDeg: 0,
+    eccentricity: 0,
+  },
   intro: {
     title: 'Inspectors watching inspectors',
     body:
@@ -18,9 +28,11 @@ export const h5_gssap_sj29: HistoricalVignette = {
     {
       t_sec: 0,
       label: 'SJ-29A and SJ-29B on station',
+      camera: 'close',
+      cameraFocusCraftId: 'sj29a',
       craft: [
-        { id: 'sj29a', name: 'SJ-29A', side: 'red', x_km: -30, y_km: 0, regime: 'GEO', labelVisible: true },
-        { id: 'sj29b', name: 'SJ-29B', side: 'red', x_km: 30, y_km: 0, regime: 'GEO', labelVisible: true },
+        { id: 'sj29a', name: 'SJ-29A', side: 'red', ricKm: [0, -30, 0], regime: 'GEO', labelVisible: true },
+        { id: 'sj29b', name: 'SJ-29B', side: 'red', ricKm: [0, 30, 0], regime: 'GEO', labelVisible: true },
       ],
       narration: {
         title: 'Pair on station',
@@ -32,10 +44,12 @@ export const h5_gssap_sj29: HistoricalVignette = {
     {
       t_sec: 25,
       label: 'USA 325 arrives from the west',
+      camera: 'close',
+      cameraFocusCraftId: 'sj29a',
       craft: [
-        { id: 'sj29a', name: 'SJ-29A', side: 'red', x_km: -30, y_km: 0, regime: 'GEO', labelVisible: true },
-        { id: 'sj29b', name: 'SJ-29B', side: 'red', x_km: 30, y_km: 0, regime: 'GEO', labelVisible: true },
-        { id: 'usa325', name: 'USA 325', side: 'blue', x_km: -120, y_km: 20, regime: 'GEO', labelVisible: true },
+        { id: 'sj29a', name: 'SJ-29A', side: 'red', ricKm: [0, -30, 0], regime: 'GEO', labelVisible: true },
+        { id: 'sj29b', name: 'SJ-29B', side: 'red', ricKm: [0, 30, 0], regime: 'GEO', labelVisible: true },
+        { id: 'usa325', name: 'USA 325', side: 'blue', ricKm: [20, -120, 0], regime: 'GEO', labelVisible: true },
       ],
       narration: {
         title: 'Approach from the west',
@@ -48,11 +62,13 @@ export const h5_gssap_sj29: HistoricalVignette = {
     {
       t_sec: 55,
       label: 'USA 324 arrives from the east',
+      camera: 'close',
+      cameraFocusCraftId: 'sj29a',
       craft: [
-        { id: 'sj29a', name: 'SJ-29A', side: 'red', x_km: -30, y_km: 0, regime: 'GEO', labelVisible: true },
-        { id: 'sj29b', name: 'SJ-29B', side: 'red', x_km: 30, y_km: 0, regime: 'GEO', labelVisible: true },
-        { id: 'usa325', name: 'USA 325', side: 'blue', x_km: -80, y_km: 15, regime: 'GEO', labelVisible: true },
-        { id: 'usa324', name: 'USA 324', side: 'blue', x_km: 80, y_km: -15, regime: 'GEO', labelVisible: true },
+        { id: 'sj29a', name: 'SJ-29A', side: 'red', ricKm: [0, -30, 0], regime: 'GEO', labelVisible: true },
+        { id: 'sj29b', name: 'SJ-29B', side: 'red', ricKm: [0, 30, 0], regime: 'GEO', labelVisible: true },
+        { id: 'usa325', name: 'USA 325', side: 'blue', ricKm: [15, -80, 0], regime: 'GEO', labelVisible: true },
+        { id: 'usa324', name: 'USA 324', side: 'blue', ricKm: [-15, 80, 0], regime: 'GEO', labelVisible: true },
       ],
       narration: {
         title: 'The bracket forms',
@@ -65,11 +81,13 @@ export const h5_gssap_sj29: HistoricalVignette = {
     {
       t_sec: 85,
       label: 'Four days of observation',
+      camera: 'close',
+      cameraFocusCraftId: 'sj29a',
       craft: [
-        { id: 'sj29a', name: 'SJ-29A', side: 'red', x_km: -30, y_km: 0, regime: 'GEO', labelVisible: true },
-        { id: 'sj29b', name: 'SJ-29B', side: 'red', x_km: 30, y_km: 0, regime: 'GEO', labelVisible: true },
-        { id: 'usa325', name: 'USA 325', side: 'blue', x_km: -70, y_km: 10, regime: 'GEO', labelVisible: true },
-        { id: 'usa324', name: 'USA 324', side: 'blue', x_km: 70, y_km: -10, regime: 'GEO', labelVisible: true },
+        { id: 'sj29a', name: 'SJ-29A', side: 'red', ricKm: [0, -30, 0], regime: 'GEO', labelVisible: true },
+        { id: 'sj29b', name: 'SJ-29B', side: 'red', ricKm: [0, 30, 0], regime: 'GEO', labelVisible: true },
+        { id: 'usa325', name: 'USA 325', side: 'blue', ricKm: [10, -70, 0], regime: 'GEO', labelVisible: true },
+        { id: 'usa324', name: 'USA 324', side: 'blue', ricKm: [-10, 70, 0], regime: 'GEO', labelVisible: true },
       ],
       narration: {
         title: 'Hold',
@@ -82,11 +100,13 @@ export const h5_gssap_sj29: HistoricalVignette = {
     {
       t_sec: 125,
       label: 'Handoff',
+      camera: 'close',
+      cameraFocusCraftId: 'sj29a',
       craft: [
-        { id: 'sj29a', name: 'SJ-29A', side: 'red', x_km: -30, y_km: 0, regime: 'GEO', labelVisible: true },
-        { id: 'sj29b', name: 'SJ-29B', side: 'red', x_km: 30, y_km: 0, regime: 'GEO', labelVisible: true },
-        { id: 'usa325', name: 'USA 325', side: 'blue', x_km: -130, y_km: 25, regime: 'GEO', labelVisible: true },
-        { id: 'usa324', name: 'USA 324', side: 'blue', x_km: 63, y_km: 0, regime: 'GEO', labelVisible: true },
+        { id: 'sj29a', name: 'SJ-29A', side: 'red', ricKm: [0, -30, 0], regime: 'GEO', labelVisible: true },
+        { id: 'sj29b', name: 'SJ-29B', side: 'red', ricKm: [0, 30, 0], regime: 'GEO', labelVisible: true },
+        { id: 'usa325', name: 'USA 325', side: 'blue', ricKm: [25, -130, 0], regime: 'GEO', labelVisible: true },
+        { id: 'usa324', name: 'USA 324', side: 'blue', ricKm: [0, 63, 0], regime: 'GEO', labelVisible: true },
       ],
       narration: {
         title: 'USA 325 departs, USA 324 closes',
@@ -99,10 +119,12 @@ export const h5_gssap_sj29: HistoricalVignette = {
     {
       t_sec: 155,
       label: 'Steady state',
+      camera: 'close',
+      cameraFocusCraftId: 'sj29a',
       craft: [
-        { id: 'sj29a', name: 'SJ-29A', side: 'red', x_km: -30, y_km: 0, regime: 'GEO', labelVisible: true },
-        { id: 'sj29b', name: 'SJ-29B', side: 'red', x_km: 30, y_km: 0, regime: 'GEO', labelVisible: true },
-        { id: 'usa324', name: 'USA 324', side: 'blue', x_km: 63, y_km: 0, regime: 'GEO', labelVisible: true },
+        { id: 'sj29a', name: 'SJ-29A', side: 'red', ricKm: [0, -30, 0], regime: 'GEO', labelVisible: true },
+        { id: 'sj29b', name: 'SJ-29B', side: 'red', ricKm: [0, 30, 0], regime: 'GEO', labelVisible: true },
+        { id: 'usa324', name: 'USA 324', side: 'blue', ricKm: [0, 63, 0], regime: 'GEO', labelVisible: true },
       ],
       narration: {
         title: 'Single-inspector hold',

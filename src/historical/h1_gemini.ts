@@ -3,6 +3,11 @@
 // Act I covering setup and launch, Act II covering the rendezvous itself.
 // The two parts of the reading list (Part 1 / Part 2) are designed to be
 // read alongside the matching act.
+//
+// v1.5: positions authored as orbital elements. Anchor orbit follows Gemini
+// VII's nominal 162x327 km ellipse. Gemini VI-A starts on a slightly lower
+// (faster) catch-up orbit, then converges to the same orbit for terminal
+// approach (modeled as RIC offsets).
 import type { HistoricalVignette } from './types'
 
 export const h1_gemini: HistoricalVignette = {
@@ -13,6 +18,12 @@ export const h1_gemini: HistoricalVignette = {
   regime: 'LEO',
   estimatedRuntimeSec: 195,
   thumbnail: '🛰️',
+  anchorOrbit: {
+    altitudeKm: 245, // mean of Gemini VII's 162 x 327 km ellipse
+    inclinationDeg: 28.87,
+    raanDeg: 0,
+    eccentricity: 0.012,
+  },
   intro: {
     title: 'Why this mattered',
     body:
@@ -29,8 +40,16 @@ export const h1_gemini: HistoricalVignette = {
     {
       t_sec: 0,
       label: 'Act I · Gemini VII on station',
+      camera: 'regime',
       craft: [
-        { id: 'g7', name: 'Gemini VII', side: 'neutral', x_km: 0, y_km: 0, regime: 'LEO', labelVisible: true },
+        {
+          id: 'g7',
+          name: 'Gemini VII',
+          side: 'neutral',
+          phaseDeg: 0,
+          regime: 'LEO',
+          labelVisible: true,
+        },
       ],
       narration: {
         title: 'Part 1: Gemini VII waits',
@@ -45,8 +64,16 @@ export const h1_gemini: HistoricalVignette = {
     {
       t_sec: 18,
       label: 'Act I · Pad abort',
+      camera: 'regime',
       craft: [
-        { id: 'g7', name: 'Gemini VII', side: 'neutral', x_km: 0, y_km: 0, regime: 'LEO', labelVisible: true },
+        {
+          id: 'g7',
+          name: 'Gemini VII',
+          side: 'neutral',
+          phaseDeg: 30,
+          regime: 'LEO',
+          labelVisible: true,
+        },
       ],
       narration: {
         title: 'The pad shuts down',
@@ -62,9 +89,26 @@ export const h1_gemini: HistoricalVignette = {
     {
       t_sec: 35,
       label: 'Act I · Ascent and insertion',
+      camera: 'regime',
+      cameraFocusCraftId: 'g6',
       craft: [
-        { id: 'g7', name: 'Gemini VII', side: 'neutral', x_km: 0, y_km: 0, regime: 'LEO', labelVisible: true },
-        { id: 'g6', name: 'Gemini VI-A', side: 'blue', x_km: -1800, y_km: -120, regime: 'LEO', labelVisible: true },
+        {
+          id: 'g7',
+          name: 'Gemini VII',
+          side: 'neutral',
+          phaseDeg: 60,
+          regime: 'LEO',
+          labelVisible: true,
+        },
+        {
+          id: 'g6',
+          name: 'Gemini VI-A',
+          side: 'blue',
+          // Catch-up orbit: lower (faster) altitude, trailing well behind.
+          coeOverride: { altitudeKm: 160, trueAnomalyDeg: 45 },
+          regime: 'LEO',
+          labelVisible: true,
+        },
       ],
       narration: {
         title: 'Lower and behind',
@@ -81,9 +125,25 @@ export const h1_gemini: HistoricalVignette = {
     {
       t_sec: 60,
       label: 'Act I · Phasing burns',
+      camera: 'close',
+      cameraFocusCraftId: 'g6',
       craft: [
-        { id: 'g7', name: 'Gemini VII', side: 'neutral', x_km: 0, y_km: 0, regime: 'LEO', labelVisible: true },
-        { id: 'g6', name: 'Gemini VI-A', side: 'blue', x_km: -400, y_km: -40, regime: 'LEO', labelVisible: true },
+        {
+          id: 'g7',
+          name: 'Gemini VII',
+          side: 'neutral',
+          phaseDeg: 0,
+          regime: 'LEO',
+          labelVisible: true,
+        },
+        {
+          id: 'g6',
+          name: 'Gemini VI-A',
+          side: 'blue',
+          coeOverride: { altitudeKm: 210, trueAnomalyDeg: -3.5 },
+          regime: 'LEO',
+          labelVisible: true,
+        },
       ],
       narration: {
         title: 'Closing the gap',
@@ -99,9 +159,25 @@ export const h1_gemini: HistoricalVignette = {
     {
       t_sec: 90,
       label: 'Act II · Inside two kilometers',
+      camera: 'proximity',
+      cameraFocusCraftId: 'g7',
       craft: [
-        { id: 'g7', name: 'Gemini VII', side: 'neutral', x_km: 0, y_km: 0, regime: 'LEO', labelVisible: true },
-        { id: 'g6', name: 'Gemini VI-A', side: 'blue', x_km: -5, y_km: 0, regime: 'LEO', labelVisible: true },
+        {
+          id: 'g7',
+          name: 'Gemini VII',
+          side: 'neutral',
+          ricKm: [0, 0, 0],
+          regime: 'LEO',
+          labelVisible: true,
+        },
+        {
+          id: 'g6',
+          name: 'Gemini VI-A',
+          side: 'blue',
+          ricKm: [0, -5, 0],
+          regime: 'LEO',
+          labelVisible: true,
+        },
       ],
       narration: {
         title: 'Part 2: Terminal approach',
@@ -117,9 +193,25 @@ export const h1_gemini: HistoricalVignette = {
     {
       t_sec: 120,
       label: 'Act II · Station at 30 cm',
+      camera: 'proximity',
+      cameraFocusCraftId: 'g7',
       craft: [
-        { id: 'g7', name: 'Gemini VII', side: 'neutral', x_km: 0, y_km: 0, regime: 'LEO', labelVisible: true },
-        { id: 'g6', name: 'Gemini VI-A', side: 'blue', x_km: -0.0003, y_km: 0, regime: 'LEO', labelVisible: true },
+        {
+          id: 'g7',
+          name: 'Gemini VII',
+          side: 'neutral',
+          ricKm: [0, 0, 0],
+          regime: 'LEO',
+          labelVisible: true,
+        },
+        {
+          id: 'g6',
+          name: 'Gemini VI-A',
+          side: 'blue',
+          ricKm: [0, -0.0003, 0],
+          regime: 'LEO',
+          labelVisible: true,
+        },
       ],
       narration: {
         title: 'Station-keeping at one foot',
@@ -136,9 +228,25 @@ export const h1_gemini: HistoricalVignette = {
     {
       t_sec: 165,
       label: 'Act II · Separation',
+      camera: 'close',
+      cameraFocusCraftId: 'g7',
       craft: [
-        { id: 'g7', name: 'Gemini VII', side: 'neutral', x_km: 0, y_km: 0, regime: 'LEO', labelVisible: true },
-        { id: 'g6', name: 'Gemini VI-A', side: 'blue', x_km: 80, y_km: 40, regime: 'LEO', labelVisible: true },
+        {
+          id: 'g7',
+          name: 'Gemini VII',
+          side: 'neutral',
+          ricKm: [0, 0, 0],
+          regime: 'LEO',
+          labelVisible: true,
+        },
+        {
+          id: 'g6',
+          name: 'Gemini VI-A',
+          side: 'blue',
+          ricKm: [40, 80, 0],
+          regime: 'LEO',
+          labelVisible: true,
+        },
       ],
       narration: {
         title: 'Departure',

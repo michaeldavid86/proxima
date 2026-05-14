@@ -3,18 +3,15 @@
 // is a set of hand-authored snapshots with schematic positions; we interpolate
 // between adjacent snapshots for smooth motion and render narration from the
 // current snapshot's block.
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useGame } from '../game/state'
 import { historicalById } from '../historical'
 import type { Snapshot } from '../historical/types'
-import { colors } from '../theme/colors'
 import Button from './components/Button'
 import Panel from './components/Panel'
+import HistoricalScene3D from './HistoricalScene3D'
 
 const SPEEDS: (0.5 | 1 | 2 | 4)[] = [0.5, 1, 2, 4]
-
-const sideColor = (s: 'blue' | 'red' | 'neutral') =>
-  s === 'blue' ? colors.friendly : s === 'red' ? colors.adversary : colors.amber
 
 export default function HistoricalPlayer() {
   const id = useGame((s) => s.activeHistoricalId)
@@ -33,27 +30,28 @@ export default function HistoricalPlayer() {
   const close = useGame((s) => s.closeHistorical)
 
   const vignette = id ? historicalById[id] ?? null : null
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const containerRef = useRef<HTMLDivElement | null>(null)
-  const lastTickRef = useRef<number | null>(null)
+  const [lastTick, setLastTick] = useState<number | null>(null)
   const [, force] = useState(0)
 
-  // rAF drive.
+  // rAF drive. Drives tick() (so the snapshot index advances) and force-
+  // rerenders so the 3D scene picks up the new playbackT each frame.
   useEffect(() => {
     if (!vignette) return
     let raf = 0
+    let prev: number | null = lastTick
     const loop = (now: number) => {
-      const prev = lastTickRef.current ?? now
-      lastTickRef.current = now
-      const realDt = Math.min(0.1, (now - prev) / 1000)
-      if (!paused) {
-        tick(realDt * speed)
-      }
+      const last = prev ?? now
+      prev = now
+      const realDt = Math.min(0.1, (now - last) / 1000)
+      if (!paused) tick(realDt * speed)
       force((v) => v + 1)
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
-    return () => cancelAnimationFrame(raf)
+    return () => {
+      setLastTick(prev)
+      cancelAnimationFrame(raf)
+    }
   }, [vignette, paused, speed, tick])
 
   // Advance snapshot index as playback time crosses each snapshot's t_sec.
@@ -98,118 +96,6 @@ export default function HistoricalPlayer() {
     return () => window.removeEventListener('keydown', onKey)
   }, [paused, setPaused, close, atEnd, vignette, promptIdx, setPrompt])
 
-  // Canvas redraw.
-  useEffect(() => {
-    if (!vignette) return
-    const canvas = canvasRef.current
-    const container = containerRef.current
-    if (!canvas || !container) return
-    const rect = container.getBoundingClientRect()
-    const dpr = window.devicePixelRatio || 1
-    canvas.width = Math.floor(rect.width * dpr)
-    canvas.height = Math.floor(rect.height * dpr)
-    canvas.style.width = `${rect.width}px`
-    canvas.style.height = `${rect.height}px`
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    ctx.resetTransform()
-    ctx.scale(dpr, dpr)
-    const W = rect.width
-    const H = rect.height
-
-    // Background
-    ctx.fillStyle = colors.bg
-    ctx.fillRect(0, 0, W, H)
-    // Grid
-    ctx.strokeStyle = colors.grid
-    ctx.lineWidth = 1
-    const gridStep = 60
-    for (let x = 0; x < W; x += gridStep) {
-      ctx.beginPath()
-      ctx.moveTo(x, 0)
-      ctx.lineTo(x, H)
-      ctx.stroke()
-    }
-    for (let y = 0; y < H; y += gridStep) {
-      ctx.beginPath()
-      ctx.moveTo(0, y)
-      ctx.lineTo(W, y)
-      ctx.stroke()
-    }
-
-    // Regime label
-    ctx.fillStyle = colors.dim
-    ctx.font = '10px "JetBrains Mono", monospace'
-    ctx.fillText(`${vignette.regime} schematic (not physically propagated)`, 12, 18)
-    ctx.fillText(`${vignette.era}`, 12, 32)
-
-    // Interpolate between current and next snapshot.
-    const cur = vignette.snapshots[snapIdx]
-    const nxt = vignette.snapshots[snapIdx + 1]
-    const denom = nxt ? nxt.t_sec - cur.t_sec : 1
-    const tFrac =
-      nxt && denom > 0 ? Math.min(1, Math.max(0, (playbackT - cur.t_sec) / denom)) : 0
-
-    // Determine world extent from craft bbox across both snapshots.
-    const bboxCraft = [...cur.craft, ...(nxt?.craft ?? [])]
-    let minX = Infinity,
-      maxX = -Infinity,
-      minY = Infinity,
-      maxY = -Infinity
-    for (const c of bboxCraft) {
-      minX = Math.min(minX, c.x_km)
-      maxX = Math.max(maxX, c.x_km)
-      minY = Math.min(minY, c.y_km)
-      maxY = Math.max(maxY, c.y_km)
-    }
-    if (!Number.isFinite(minX)) {
-      minX = -100
-      maxX = 100
-      minY = -100
-      maxY = 100
-    }
-    // Pad the view so craft are not at the edge.
-    const padX = Math.max((maxX - minX) * 0.3, 20)
-    const padY = Math.max((maxY - minY) * 0.3, 20)
-    minX -= padX
-    maxX += padX
-    minY -= padY
-    maxY += padY
-    const spanX = maxX - minX
-    const spanY = maxY - minY
-    const scale = Math.min((W - 40) / spanX, (H - 80) / spanY)
-    const toScreen = (x: number, y: number) => ({
-      x: 20 + (x - minX) * scale,
-      y: H - 40 - (y - minY) * scale,
-    })
-
-    // Draw each craft (interpolated position).
-    const byId = new Map<string, { from?: typeof cur.craft[0]; to?: typeof cur.craft[0] }>()
-    for (const c of cur.craft) byId.set(c.id, { from: c })
-    if (nxt)
-      for (const c of nxt.craft) {
-        const prev = byId.get(c.id) ?? {}
-        byId.set(c.id, { ...prev, to: c })
-      }
-
-    for (const [, pair] of byId) {
-      const from = pair.from ?? pair.to!
-      const to = pair.to ?? pair.from!
-      const x = from.x_km + (to.x_km - from.x_km) * tFrac
-      const y = from.y_km + (to.y_km - from.y_km) * tFrac
-      const p = toScreen(x, y)
-      ctx.fillStyle = sideColor(from.side)
-      ctx.beginPath()
-      ctx.arc(p.x, p.y, 6, 0, 2 * Math.PI)
-      ctx.fill()
-      if (from.labelVisible || to.labelVisible) {
-        ctx.fillStyle = colors.text
-        ctx.font = '11px "JetBrains Mono", monospace'
-        ctx.fillText(from.name, p.x + 10, p.y - 8)
-      }
-    }
-  }, [snapIdx, playbackT, vignette])
-
   const current: Snapshot | null = useMemo(
     () => (vignette ? vignette.snapshots[snapIdx] : null),
     [vignette, snapIdx],
@@ -242,8 +128,16 @@ export default function HistoricalPlayer() {
         <Button onClick={close}>✕ Close</Button>
       </header>
       <div className="flex min-h-0 flex-1">
-        <div className="relative flex min-w-0 flex-[7] flex-col border-r border-mc-cyan/20" ref={containerRef}>
-          <canvas ref={canvasRef} className="absolute inset-0" />
+        <div className="relative flex min-w-0 flex-[7] flex-col border-r border-mc-cyan/20">
+          <HistoricalScene3D
+            vignette={vignette}
+            snapshotIdx={snapIdx}
+            playbackT={playbackT}
+          />
+          <div className="pointer-events-none absolute left-3 top-2 font-mono text-[10px] text-mc-dim">
+            <div>{vignette.regime} · {vignette.era}</div>
+            <div className="mt-0.5 opacity-70">Schematic — drag to rotate, scroll to zoom</div>
+          </div>
         </div>
         <aside className="flex w-[360px] flex-[3] flex-col gap-2 bg-panel-fill p-2">
           {atEnd && activePrompt ? (

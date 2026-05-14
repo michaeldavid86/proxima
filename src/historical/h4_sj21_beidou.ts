@@ -1,3 +1,6 @@
+// SJ-21 historical vignette. v1.5 3D model: GEO anchor orbit. SJ-21 closes
+// on Beidou-2 G2, grapples, tows to graveyard (coeOverride with raised
+// altitude), and returns to the operational ring.
 import type { HistoricalVignette } from './types'
 
 export const h4_sj21_beidou: HistoricalVignette = {
@@ -8,6 +11,12 @@ export const h4_sj21_beidou: HistoricalVignette = {
   regime: 'GEO',
   estimatedRuntimeSec: 145,
   thumbnail: '🪝',
+  anchorOrbit: {
+    altitudeKm: 35786,
+    inclinationDeg: 0.05,
+    raanDeg: 0,
+    eccentricity: 0,
+  },
   intro: {
     title: 'A dead satellite moves',
     body:
@@ -18,8 +27,10 @@ export const h4_sj21_beidou: HistoricalVignette = {
     {
       t_sec: 0,
       label: 'Beidou-2 G2, dead at GEO',
+      camera: 'regime',
+      cameraFocusCraftId: 'bd2',
       craft: [
-        { id: 'bd2', name: 'Beidou-2 G2 (dead)', side: 'neutral', x_km: 0, y_km: 0, regime: 'GEO', labelVisible: true },
+        { id: 'bd2', name: 'Beidou-2 G2 (dead)', side: 'neutral', phaseDeg: 0, regime: 'GEO', labelVisible: true },
       ],
       narration: {
         title: 'A dead spacecraft in the belt',
@@ -31,9 +42,11 @@ export const h4_sj21_beidou: HistoricalVignette = {
     {
       t_sec: 20,
       label: 'SJ-21 approaches',
+      camera: 'close',
+      cameraFocusCraftId: 'bd2',
       craft: [
-        { id: 'bd2', name: 'Beidou-2 G2', side: 'neutral', x_km: 0, y_km: 0, regime: 'GEO', labelVisible: true },
-        { id: 'sj21', name: 'SJ-21', side: 'red', x_km: -25, y_km: 5, regime: 'GEO', labelVisible: true },
+        { id: 'bd2', name: 'Beidou-2 G2', side: 'neutral', phaseDeg: 0, regime: 'GEO', labelVisible: true },
+        { id: 'sj21', name: 'SJ-21', side: 'red', ricKm: [5, -25, 0], regime: 'GEO', labelVisible: true },
       ],
       narration: {
         title: 'Closing on a cold target',
@@ -46,8 +59,10 @@ export const h4_sj21_beidou: HistoricalVignette = {
     {
       t_sec: 50,
       label: 'Grapple',
+      camera: 'proximity',
+      cameraFocusCraftId: 'stack',
       craft: [
-        { id: 'stack', name: 'SJ-21 + Beidou-2', side: 'red', x_km: 0, y_km: 0, regime: 'GEO', labelVisible: true },
+        { id: 'stack', name: 'SJ-21 + Beidou-2 G2', side: 'red', phaseDeg: 0, regime: 'GEO', labelVisible: true },
       ],
       narration: {
         title: 'Grappled',
@@ -60,8 +75,18 @@ export const h4_sj21_beidou: HistoricalVignette = {
     {
       t_sec: 80,
       label: 'Tow to graveyard',
+      camera: 'close',
+      cameraFocusCraftId: 'stack',
       craft: [
-        { id: 'stack', name: 'combined stack', side: 'red', x_km: 0, y_km: 150, regime: 'GEO', labelVisible: true },
+        {
+          id: 'stack',
+          name: 'combined stack',
+          side: 'red',
+          // Climbing out: ~150 km above GEO, halfway to the graveyard.
+          coeOverride: { altitudeKm: 35786 + 150, trueAnomalyDeg: 1.5 },
+          regime: 'GEO',
+          labelVisible: true,
+        },
       ],
       narration: {
         title: 'Raising apogee',
@@ -73,9 +98,27 @@ export const h4_sj21_beidou: HistoricalVignette = {
     {
       t_sec: 110,
       label: 'Release and return',
+      camera: 'close',
+      cameraFocusCraftId: 'bd2',
       craft: [
-        { id: 'bd2', name: 'Beidou-2 G2', side: 'neutral', x_km: 0, y_km: 300, regime: 'GEO', labelVisible: true },
-        { id: 'sj21', name: 'SJ-21', side: 'red', x_km: 10, y_km: 260, regime: 'GEO', labelVisible: true },
+        {
+          id: 'bd2',
+          name: 'Beidou-2 G2',
+          side: 'neutral',
+          // Released in the graveyard.
+          coeOverride: { altitudeKm: 35786 + 300, trueAnomalyDeg: 2.5 },
+          regime: 'GEO',
+          labelVisible: true,
+        },
+        {
+          id: 'sj21',
+          name: 'SJ-21',
+          side: 'red',
+          // Descending back toward the GEO ring.
+          coeOverride: { altitudeKm: 35786 + 260, trueAnomalyDeg: 2.8 },
+          regime: 'GEO',
+          labelVisible: true,
+        },
       ],
       narration: {
         title: 'Separation in the graveyard',
@@ -88,8 +131,10 @@ export const h4_sj21_beidou: HistoricalVignette = {
     {
       t_sec: 135,
       label: 'What was shown',
+      camera: 'regime',
+      cameraFocusCraftId: 'sj21',
       craft: [
-        { id: 'sj21', name: 'SJ-21', side: 'red', x_km: 0, y_km: 0, regime: 'GEO', labelVisible: true },
+        { id: 'sj21', name: 'SJ-21', side: 'red', phaseDeg: 5, regime: 'GEO', labelVisible: true },
       ],
       narration: {
         title: 'The capability is general',

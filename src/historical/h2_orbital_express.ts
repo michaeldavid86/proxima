@@ -1,3 +1,6 @@
+// Orbital Express historical vignette. v1.5 3D model: both ASTRO and
+// NEXTSat fly on the same circular LEO at ~492 km. Positions are RIC
+// offsets in km, with ASTRO closing on NEXTSat in stages.
 import type { HistoricalVignette } from './types'
 
 export const h2_orbital_express: HistoricalVignette = {
@@ -8,6 +11,12 @@ export const h2_orbital_express: HistoricalVignette = {
   regime: 'LEO',
   estimatedRuntimeSec: 160,
   thumbnail: '🤖',
+  anchorOrbit: {
+    altitudeKm: 492,
+    inclinationDeg: 46,
+    raanDeg: 30,
+    eccentricity: 0,
+  },
   intro: {
     title: 'The first autonomous RPO',
     body:
@@ -18,9 +27,11 @@ export const h2_orbital_express: HistoricalVignette = {
     {
       t_sec: 0,
       label: 'Initial separation',
+      camera: 'regime',
+      cameraFocusCraftId: 'nextsat',
       craft: [
-        { id: 'astro', name: 'ASTRO', side: 'blue', x_km: 0, y_km: 0, regime: 'LEO', labelVisible: true },
-        { id: 'nextsat', name: 'NEXTSat', side: 'neutral', x_km: 0.005, y_km: 0, regime: 'LEO', labelVisible: true },
+        { id: 'nextsat', name: 'NEXTSat', side: 'neutral', ricKm: [0, 0, 0], regime: 'LEO', labelVisible: true },
+        { id: 'astro', name: 'ASTRO', side: 'blue', ricKm: [0, -0.005, 0], regime: 'LEO', labelVisible: true },
       ],
       narration: {
         title: 'Mated at launch',
@@ -32,9 +43,11 @@ export const h2_orbital_express: HistoricalVignette = {
     {
       t_sec: 20,
       label: 'Standoff at 7 km',
+      camera: 'close',
+      cameraFocusCraftId: 'nextsat',
       craft: [
-        { id: 'astro', name: 'ASTRO', side: 'blue', x_km: -7, y_km: 0, regime: 'LEO', labelVisible: true },
-        { id: 'nextsat', name: 'NEXTSat', side: 'neutral', x_km: 0, y_km: 0, regime: 'LEO', labelVisible: true },
+        { id: 'nextsat', name: 'NEXTSat', side: 'neutral', ricKm: [0, 0, 0], regime: 'LEO', labelVisible: true },
+        { id: 'astro', name: 'ASTRO', side: 'blue', ricKm: [0, -7, 0], regime: 'LEO', labelVisible: true },
       ],
       narration: {
         title: 'Autonomous re-approach',
@@ -48,9 +61,11 @@ export const h2_orbital_express: HistoricalVignette = {
     {
       t_sec: 50,
       label: 'Capture',
+      camera: 'proximity',
+      cameraFocusCraftId: 'nextsat',
       craft: [
-        { id: 'astro', name: 'ASTRO', side: 'blue', x_km: 0, y_km: 0, regime: 'LEO', labelVisible: true },
-        { id: 'nextsat', name: 'NEXTSat', side: 'neutral', x_km: 0.002, y_km: 0, regime: 'LEO', labelVisible: true },
+        { id: 'nextsat', name: 'NEXTSat', side: 'neutral', ricKm: [0, 0, 0], regime: 'LEO', labelVisible: true },
+        { id: 'astro', name: 'ASTRO', side: 'blue', ricKm: [0, -0.002, 0], regime: 'LEO', labelVisible: true },
       ],
       narration: {
         title: 'Arm grapple',
@@ -62,9 +77,11 @@ export const h2_orbital_express: HistoricalVignette = {
     {
       t_sec: 75,
       label: 'Propellant transfer',
+      camera: 'proximity',
+      cameraFocusCraftId: 'nextsat',
       craft: [
-        { id: 'astro', name: 'ASTRO', side: 'blue', x_km: 0, y_km: 0, regime: 'LEO', labelVisible: true },
-        { id: 'nextsat', name: 'NEXTSat', side: 'neutral', x_km: 0.002, y_km: 0, regime: 'LEO', labelVisible: true },
+        { id: 'nextsat', name: 'NEXTSat', side: 'neutral', ricKm: [0, 0, 0], regime: 'LEO', labelVisible: true },
+        { id: 'astro', name: 'ASTRO', side: 'blue', ricKm: [0, -0.002, 0], regime: 'LEO', labelVisible: true },
       ],
       narration: {
         title: 'Fluid transfer',
@@ -76,9 +93,11 @@ export const h2_orbital_express: HistoricalVignette = {
     {
       t_sec: 105,
       label: 'Component swap',
+      camera: 'proximity',
+      cameraFocusCraftId: 'nextsat',
       craft: [
-        { id: 'astro', name: 'ASTRO', side: 'blue', x_km: 0, y_km: 0, regime: 'LEO', labelVisible: true },
-        { id: 'nextsat', name: 'NEXTSat', side: 'neutral', x_km: 0.002, y_km: 0, regime: 'LEO', labelVisible: true },
+        { id: 'nextsat', name: 'NEXTSat', side: 'neutral', ricKm: [0, 0, 0], regime: 'LEO', labelVisible: true },
+        { id: 'astro', name: 'ASTRO', side: 'blue', ricKm: [0, -0.002, 0], regime: 'LEO', labelVisible: true },
       ],
       narration: {
         title: 'Orbital Replaceable Unit',
@@ -91,9 +110,11 @@ export const h2_orbital_express: HistoricalVignette = {
     {
       t_sec: 135,
       label: 'Release and re-approach',
+      camera: 'close',
+      cameraFocusCraftId: 'nextsat',
       craft: [
-        { id: 'astro', name: 'ASTRO', side: 'blue', x_km: -3, y_km: 0, regime: 'LEO', labelVisible: true },
-        { id: 'nextsat', name: 'NEXTSat', side: 'neutral', x_km: 0, y_km: 0, regime: 'LEO', labelVisible: true },
+        { id: 'nextsat', name: 'NEXTSat', side: 'neutral', ricKm: [0, 0, 0], regime: 'LEO', labelVisible: true },
+        { id: 'astro', name: 'ASTRO', side: 'blue', ricKm: [0, -3, 0], regime: 'LEO', labelVisible: true },
       ],
       narration: {
         title: 'Release and return',
