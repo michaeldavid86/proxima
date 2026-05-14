@@ -341,9 +341,12 @@ export default function HistoricalScene3D({ vignette, snapshotIdx, playbackT, re
 
   return (
     <Canvas
-      camera={{ position: [3, 1.5, 3], near: 0.01, far: 1000, fov: 45 }}
+      // Near is tiny (10 m equivalent at 1 unit = 1e7 m) so proximity views
+      // of meter-scale RPO action don't get clipped. logarithmicDepthBuffer
+      // keeps z-precision usable across the resulting wide near/far range.
+      camera={{ position: [3, 1.5, 3], near: 1e-6, far: 1000, fov: 45 }}
       dpr={[1, 2]}
-      gl={{ antialias: true }}
+      gl={{ antialias: true, logarithmicDepthBuffer: true }}
     >
       <color attach="background" args={['#020610']} />
       <ambientLight intensity={0.45} />
@@ -392,7 +395,9 @@ export default function HistoricalScene3D({ vignette, snapshotIdx, playbackT, re
         dampingFactor={0.08}
         rotateSpeed={0.5}
         zoomSpeed={0.6}
-        minDistance={mToUnits(R_EARTH) * 1.05}
+        // minDistance lowered so RPO proximity views (10s of meters from
+        // focus) are not clamped away by the orbit controller.
+        minDistance={mToUnits(50)}
         maxDistance={mToUnits(R_EARTH) * 30}
       />
     </Canvas>
