@@ -10,8 +10,11 @@ import type { Snapshot } from '../historical/types'
 import Button from './components/Button'
 import Panel from './components/Panel'
 import HistoricalScene3D from './HistoricalScene3D'
+import HistoricalScene2D from './HistoricalScene2D'
 
 const SPEEDS: (0.5 | 1 | 2 | 4)[] = [0.5, 1, 2, 4]
+
+type ViewMode = '2d' | '3d'
 
 export default function HistoricalPlayer() {
   const id = useGame((s) => s.activeHistoricalId)
@@ -32,6 +35,10 @@ export default function HistoricalPlayer() {
   const vignette = id ? historicalById[id] ?? null : null
   const [lastTick, setLastTick] = useState<number | null>(null)
   const [, force] = useState(0)
+  const [viewMode, setViewMode] = useState<ViewMode>('3d')
+  // Bumped whenever the user clicks "Reframe" — used to force the 3D
+  // camera to re-run its auto-frame animation without changing snapshotIdx.
+  const [reframeKey, setReframeKey] = useState(0)
 
   // rAF drive. Drives tick() (so the snapshot index advances) and force-
   // rerenders so the 3D scene picks up the new playbackT each frame.
@@ -125,18 +132,63 @@ export default function HistoricalPlayer() {
           <span className="font-mono text-sm text-mc-text">{vignette.title}</span>
           <span className="font-mono text-xs text-mc-dim">· {vignette.era}</span>
         </div>
-        <Button onClick={close}>✕ Close</Button>
+        <div className="flex items-center gap-2">
+          <div className="flex border border-mc-cyan/30">
+            <button
+              onClick={() => setViewMode('2d')}
+              className={`px-2 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors ${
+                viewMode === '2d'
+                  ? 'bg-mc-cyan/20 text-mc-cyan'
+                  : 'text-mc-dim hover:text-mc-cyan'
+              }`}
+            >
+              2D
+            </button>
+            <button
+              onClick={() => setViewMode('3d')}
+              className={`px-2 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors ${
+                viewMode === '3d'
+                  ? 'bg-mc-cyan/20 text-mc-cyan'
+                  : 'text-mc-dim hover:text-mc-cyan'
+              }`}
+            >
+              3D
+            </button>
+          </div>
+          {viewMode === '3d' && (
+            <Button
+              onClick={() => setReframeKey((k) => k + 1)}
+              className="!py-1 !text-[10px]"
+            >
+              ⌖ Reframe
+            </Button>
+          )}
+          <Button onClick={close}>✕ Close</Button>
+        </div>
       </header>
       <div className="flex min-h-0 flex-1">
         <div className="relative flex min-w-0 flex-[7] flex-col border-r border-mc-cyan/20">
-          <HistoricalScene3D
-            vignette={vignette}
-            snapshotIdx={snapIdx}
-            playbackT={playbackT}
-          />
+          {viewMode === '3d' ? (
+            <HistoricalScene3D
+              vignette={vignette}
+              snapshotIdx={snapIdx}
+              playbackT={playbackT}
+              reframeKey={reframeKey}
+            />
+          ) : (
+            <HistoricalScene2D
+              vignette={vignette}
+              snapshotIdx={snapIdx}
+              playbackT={playbackT}
+            />
+          )}
           <div className="pointer-events-none absolute left-3 top-2 font-mono text-[10px] text-mc-dim">
             <div>{vignette.regime} · {vignette.era}</div>
-            <div className="mt-0.5 opacity-70">Schematic — drag to rotate, scroll to zoom</div>
+            <div className="mt-0.5 opacity-70">
+              {viewMode === '3d'
+                ? 'Schematic — drag to rotate, scroll to zoom'
+                : 'Schematic — drag to pan, scroll to zoom'}
+            </div>
           </div>
         </div>
         <aside className="flex w-[360px] flex-[3] flex-col gap-2 bg-panel-fill p-2">

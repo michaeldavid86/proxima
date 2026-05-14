@@ -22,6 +22,9 @@ interface Props {
   vignette: HistoricalVignette
   snapshotIdx: number
   playbackT: number
+  // Bump this to force the camera to re-run its auto-frame animation
+  // without changing the snapshot (e.g. a "Reframe" button).
+  reframeKey?: number
 }
 
 const sideColor = (s: CraftSnapshot['side']) =>
@@ -106,15 +109,20 @@ function MotionTrail({
   )
 }
 
-// Camera controller specifically for the historical scene. Watches the
-// current snapshot's camera preset and the focused craft's position, then
-// lerps the camera + lookAt smoothly.
+// Camera controller specifically for the historical scene. Snaps to a new
+// framing when the snapshot changes, then yields to OrbitControls so the
+// cadet can freely rotate / zoom / pan to look at the geometry. The animation
+// runs for a short window (~800 ms) after each snapshot change and stops.
+const AUTO_FRAME_DURATION_MS = 800
+
 function HistoricalCamera({
   vignette,
   snapshotIdx,
+  reframeKey,
 }: {
   vignette: HistoricalVignette
   snapshotIdx: number
+  reframeKey: number
 }) {
   const { camera, controls } = useThree() as unknown as {
     camera: THREE.PerspectiveCamera
@@ -122,9 +130,11 @@ function HistoricalCamera({
   }
   const targetPos = useRef(new THREE.Vector3())
   const targetLookAt = useRef(new THREE.Vector3())
+  const animEndAt = useRef<number>(0)
   const initialized = useRef(false)
 
-  // Recompute desired camera state when snapshot or playback advances.
+  // Recompute desired camera state when snapshot changes. Sets a short
+  // animation window; user input takes over once it elapses.
   useEffect(() => {
     const cur = vignette.snapshots[snapshotIdx]
     if (!cur) return
@@ -141,8 +151,8 @@ function HistoricalCamera({
     if (camPreset === 'close') distance = Math.max(anchorAU * 0.35, earthU * 1.2)
     else if (camPreset === 'proximity') distance = earthU * 0.15
 
-    // Offset the camera around the focus along a stable bearing that varies
-    // by snapshot so a static hold doesn't look frozen.
+    // Offset around focus along a stable bearing that varies per snapshot
+    // so a static hold reads as a new view, not a frozen frame.
     const bearing = (snapshotIdx * 0.4) % (2 * Math.PI)
     const elev = camPreset === 'regime' ? 0.55 : 0.3
     const offset = new THREE.Vector3(
@@ -151,24 +161,28 @@ function HistoricalCamera({
       Math.sin(bearing) * distance,
     )
 
-    // For 'regime', frame Earth + orbit centered on the origin.
-    // For 'close' / 'proximity', frame the focus craft.
     const lookCenter =
       camPreset === 'regime' ? new THREE.Vector3(0, 0, 0) : focusThree
     targetLookAt.current.copy(lookCenter)
     targetPos.current.copy(lookCenter).add(offset)
-  }, [vignette, snapshotIdx])
+    animEndAt.current = performance.now() + AUTO_FRAME_DURATION_MS
+  }, [vignette, snapshotIdx, reframeKey])
 
   useFrame(() => {
+    // First frame: snap into place immediately so we never start from the
+    // bogus default camera position.
     if (!initialized.current) {
       camera.position.copy(targetPos.current)
       if (controls?.target) controls.target.copy(targetLookAt.current)
       camera.lookAt(targetLookAt.current)
-      initialized.current = true
       controls?.update?.()
+      initialized.current = true
       return
     }
-    const lerpRate = 0.06
+    // After the auto-frame window expires, leave the camera alone so user
+    // drags persist.
+    if (performance.now() > animEndAt.current) return
+    const lerpRate = 0.12
     camera.position.lerp(targetPos.current, lerpRate)
     if (controls?.target) {
       controls.target.lerp(targetLookAt.current, lerpRate)
@@ -186,7 +200,7 @@ function HistoricalCamera({
 const coeKey = (c: COE): string =>
   [c.a, c.e, c.i, c.raan, c.argp].map((x) => x.toFixed(4)).join('|')
 
-export default function HistoricalScene3D({ vignette, snapshotIdx, playbackT }: Props) {
+export default function HistoricalScene3D({ vignette, snapshotIdx, playbackT, reframeKey = 0 }: Props) {
   const cur = vignette.snapshots[snapshotIdx]
   const nxt = vignette.snapshots[snapshotIdx + 1]
   const denom = nxt ? nxt.t_sec - cur.t_sec : 1
@@ -301,6 +315,7 @@ export default function HistoricalScene3D({ vignette, snapshotIdx, playbackT }: 
       <HistoricalCamera
         vignette={vignette}
         snapshotIdx={snapshotIdx}
+        reframeKey={reframeKey}
       />
       <OrbitControls
         makeDefault
